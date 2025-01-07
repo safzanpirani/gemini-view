@@ -352,8 +352,17 @@ textarea:focus {
 
 #response-content strong,
 #response-content b {
-    font-weight: 600;
+    font-weight: 700 !important;
     color: var(--text-color);
+    position: relative;
+    background: linear-gradient(transparent 60%, rgba(26, 115, 232, 0.1) 40%);
+    padding: 0 2px;
+}
+
+#response-content strong em,
+#response-content em strong {
+    font-style: normal;
+    font-weight: 700 !important;
 }
 
 #response-content h1,
