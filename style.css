@@ -5,6 +5,7 @@
     --secondary-color: #f8f9fa;
     --border-color: #ddd;
     --shadow-color: rgba(0, 0, 0, 0.1);
+    --primary-color-rgb: 26, 115, 232; /* RGB values for your primary color */
 }
 
 [data-theme="dark"] {
@@ -355,7 +356,11 @@ textarea:focus {
     font-weight: 700 !important;
     color: var(--text-color);
     position: relative;
-    background: linear-gradient(transparent 60%, rgba(26, 115, 232, 0.1) 40%);
+    /* subtle background highlight for bold text */
+    background: linear-gradient(
+        transparent 60%,
+        rgba(var(--primary-color-rgb), 0.1) 40%
+    );
     padding: 0 2px;
 }
 
