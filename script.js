@@ -49,6 +49,36 @@ This model supports a wide array of styles and aesthetics but provides an opinio
 
 score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, just describe what you want, tag1, tag2`,
   },
+  "quiz solver": {
+      prompt: `act as an expert quiz and multiple-choice question solver. analyze the image containing quiz/test questions and provide:
+
+  1. clear answers with explanations
+  2. step-by-step reasoning for each answer
+  3. keywords or concepts that led to the answer
+  4. elimination process for incorrect options (if multiple choice)
+  5. relevant formulas or rules used (if applicable)
+  6. common tricks or traps to watch out for
+  7. memory aids or mnemonics (when helpful)
+  8. related concepts for deeper understanding
+
+  format guidelines:
+  • for each question, start with "Q#:" followed by the correct answer
+  • use "explanation:" to provide detailed reasoning
+  • if multiple choice, explain why other options are incorrect
+  • highlight key terms in *asterisks*
+  • include confidence level (high/medium/low) for each answer
+  • mark uncertain answers with "?" and explain why
+
+  example format:
+  Q1: B (confidence: high)
+  explanation: chosen because... [reasoning]
+  wrong options:
+  A - incorrect because...
+  C - incorrect because...
+  D - incorrect because...
+  key concepts: *term1*, *term2*
+
+  remember, the goal is not just to provide answers but to explain the thinking process and reinforce learning.`
 };
 
 // Add this function to initialize prompt presets
