@@ -338,7 +338,7 @@ textarea:focus {
 }
 
 #response-content {
-    white-space: pre-wrap;
+    white-space: normal; /* changed from pre-wrap */
     word-wrap: break-word;
     padding: 12px;
     background-color: var(--bg-color);
@@ -347,6 +347,49 @@ textarea:focus {
     margin-top: 12px;
     color: var(--text-color);
     transition: all 0.3s;
+}
+
+/* markdown styles */
+#response-content h1,
+#response-content h2,
+#response-content h3,
+#response-content h4,
+#response-content h5,
+#response-content h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+#response-content p {
+    margin-bottom: 1em;
+}
+
+#response-content code {
+    background: var(--secondary-color);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+#response-content pre {
+    background: var(--secondary-color);
+    padding: 1em;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+#response-content ul,
+#response-content ol {
+    padding-left: 2em;
+    margin-bottom: 1em;
+}
+
+#response-content blockquote {
+    border-left: 4px solid var(--primary-color);
+    padding-left: 1em;
+    margin-left: 0;
+    color: var(--text-color);
+    opacity: 0.8;
 }
 
 .followup-section {

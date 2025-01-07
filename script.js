@@ -395,10 +395,11 @@ async function handleSubmit(isFollowup = false) {
     console.log("API response:", data);
 
     if (data.candidates && data.candidates.length > 0) {
-      const response = data.candidates[0].content.parts[0].text;
-      elements.responseContent.textContent = response;
+      const rawResponse = data.candidates[0].content.parts[0].text;
+      const formattedResponse = marked.parse(rawResponse);
+      elements.responseContent.innerHTML = formattedResponse; // changed from textContent to innerHTML
     } else {
-      throw new Error("No candidates in API response");
+      throw new Error("no candidates in api response");
     }
   } catch (error) {
     console.error("Detailed error:", error);
