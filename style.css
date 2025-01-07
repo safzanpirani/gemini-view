@@ -99,6 +99,7 @@ h1 {
     cursor: pointer;
     transition: all 0.2s;
     text-align: left;
+    color: var(--text-color); /* Add this line to use theme text color */
 }
 
 .preset-button.active {
