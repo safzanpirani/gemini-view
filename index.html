@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>gemini 2.0 flash image expo</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>gemini 2.0 flash image expo</h1>
+                <button id="theme-toggle" aria-label="Toggle color theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+            <div class="preset-section">
+                <div class="preset-buttons">
+                    <!-- Preset buttons will be added here dynamically -->
+                </div>
+                <div class="preset-controls">
+                    <button id="save-prompt-preset" class="preset-control-btn">
+                        save as preset
+                    </button>
+                    <button
+                        id="delete-prompt-preset"
+                        class="preset-control-btn"
+                    >
+                        delete preset
+                    </button>
+                </div>
+            </div>
+            <div class="upload-section">
+                <label for="image-upload">upload image:</label>
+                <div class="file-input-wrapper">
+                    <input
+                        type="file"
+                        id="image-upload"
+                        accept="image/*"
+                        class="file-input"
+                        aria-label="Upload image file"
+                    />
+                    <div
+                        class="drag-drop-area"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Drag and drop area for images"
+                    >
+                        <span class="drag-drop-text"
+                            >drag & drop an image here</span
+                        >
+                        <span class="or-text">or</span>
+                        <button type="button" class="file-input-button">
+                            choose file
+                        </button>
+                    </div>
+                </div>
+                <img
+                    id="preview-image"
+                    src="#"
+                    alt="Image Preview"
+                    style="display: none"
+                />
+            </div>
+            <div class="prompt-section">
+                <label for="system-prompt">system prompt:</label>
+                <textarea
+                    id="system-prompt"
+                    placeholder="Enter your prompt here..."
+                    aria-label="System prompt input"
+                    role="textbox"
+                ></textarea>
+            </div>
+            <div class="temperature-section">
+                <label for="temperature">Temperature (0-2):</label>
+                <input
+                    type="range"
+                    id="temperature"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value="1"
+                    aria-label="Temperature control"
+                />
+                <span id="temperature-value" aria-live="polite">1</span>
+            </div>
+            <button id="submit-btn" aria-live="polite" role="button">
+                get response
+            </button>
+            <div class="response-section">
+                <h2>response:</h2>
+                <div
+                    id="response-content"
+                    role="region"
+                    aria-live="polite"
+                ></div>
+            </div>
+            <div class="followup-section">
+                <textarea
+                    id="followup-prompt"
+                    placeholder="Enter follow-up instructions..."
+                    aria-label="Follow-up prompt input"
+                    role="textbox"
+                ></textarea>
+                <button id="followup-btn" aria-live="polite" role="button">
+                    send follow-up
+                </button>
+            </div>
+        </div>
+        <script src="script.js"></script>
+    </body>
+</html>
