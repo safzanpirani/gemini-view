@@ -1,4 +1,3 @@
-const API_KEY = process.env.GEMINI_API_KEY;
 const API_URL = "/api/gemini";
 // "https://generativelanguage.googleapis.com/v1beta/models/gemini-exp-1206:generateContent";
 
