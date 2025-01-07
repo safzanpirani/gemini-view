@@ -50,7 +50,7 @@ This model supports a wide array of styles and aesthetics but provides an opinio
 score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, just describe what you want, tag1, tag2`,
   },
   "quiz solver": {
-      prompt: `act as an expert quiz and multiple-choice question solver. analyze the image containing quiz/test questions and provide:
+    prompt: `act as an expert quiz and multiple-choice question solver. analyze the image containing quiz/test questions and provide:
 
   1. clear answers with explanations
   2. step-by-step reasoning for each answer
@@ -78,7 +78,8 @@ score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up, just descri
   D - incorrect because...
   key concepts: *term1*, *term2*
 
-  remember, the goal is not just to provide answers but to explain the thinking process and reinforce learning.`
+  remember, the goal is not just to provide answers but to explain the thinking process and reinforce learning.`,
+  },
 };
 
 // Add this function to initialize prompt presets
