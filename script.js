@@ -22,6 +22,7 @@ const elements = {
   savePromptPreset: document.getElementById("save-prompt-preset"),
   deletePromptPreset: document.getElementById("delete-prompt-preset"),
   presetButtons: document.querySelector(".preset-buttons"),
+  factoryReset: document.getElementById("factory-reset"),
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -262,6 +263,39 @@ async function makeApiCall(payload) {
   return await response.json();
 }
 
+function factoryReset() {
+  if (
+    confirm(
+      "Warning: This will permanently delete all your settings, presets, and stored data. This action cannot be undone. Are you sure you want to continue?",
+    )
+  ) {
+    // Clear localStorage
+    localStorage.clear();
+
+    // Clear sessionStorage
+    sessionStorage.clear();
+
+    // Clear all cookies for this domain
+    document.cookie.split(";").forEach(function (c) {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    // Clear cache if available
+    if ("caches" in window) {
+      caches.keys().then(function (names) {
+        names.forEach(function (name) {
+          caches.delete(name);
+        });
+      });
+    }
+
+    alert("All data has been cleared. The page will now reload.");
+    window.location.reload();
+  }
+}
+
 // Submit handlers
 async function handleSubmit(isFollowup = false) {
   const button = isFollowup ? elements.followupBtn : elements.submitBtn;
@@ -358,6 +392,8 @@ function initializeEventListeners() {
   elements.deletePromptPreset.addEventListener("click", deletePromptPreset);
 
   elements.themeToggle.addEventListener("click", toggleTheme);
+
+  elements.factoryReset.addEventListener("click", factoryReset);
 
   elements.dragDropArea.addEventListener("dragover", (e) => {
     e.preventDefault();

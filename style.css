@@ -131,6 +131,34 @@ h1 {
     background-color: #1557b0;
 }
 
+.factory-reset-wrapper {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+}
+
+.factory-reset-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.factory-reset-button:hover {
+    background-color: #c82333;
+    transform: scale(1.1);
+}
+
 label {
     display: block;
     margin-bottom: 8px;
