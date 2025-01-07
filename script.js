@@ -5,6 +5,13 @@ const API_URL = "/api/gemini";
 let isLoading = false;
 let conversationHistory = [];
 
+marked.setOptions({
+  breaks: true, // line breaks
+  gfm: true, // github flavored markdown
+  headerIds: false, // disable header IDs
+  mangle: false, // disable header ID mangling
+});
+
 // DOM elements
 const elements = {
   temperatureInput: document.getElementById("temperature"),
@@ -396,8 +403,18 @@ async function handleSubmit(isFollowup = false) {
 
     if (data.candidates && data.candidates.length > 0) {
       const rawResponse = data.candidates[0].content.parts[0].text;
-      const formattedResponse = marked.parse(rawResponse);
-      elements.responseContent.innerHTML = formattedResponse; // changed from textContent to innerHTML
+      // ensure line breaks are preserved and converted properly
+      const processedResponse = rawResponse
+        .replace(/\n\n/g, "\n\n") // preserve paragraph breaks
+        .replace(/•/g, "\n•") // handle bullet points
+        .trim();
+
+      const formattedResponse = marked.parse(processedResponse, {
+        breaks: true, // enables line breaks without needing two spaces
+        gfm: true, // enables GitHub-flavored markdown
+      });
+
+      elements.responseContent.innerHTML = formattedResponse;
     } else {
       throw new Error("no candidates in api response");
     }
