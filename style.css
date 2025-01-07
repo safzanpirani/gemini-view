@@ -338,7 +338,7 @@ textarea:focus {
 }
 
 #response-content {
-    white-space: normal; /* changed from pre-wrap */
+    white-space: normal;
     word-wrap: break-word;
     padding: 12px;
     background-color: var(--bg-color);
@@ -347,9 +347,15 @@ textarea:focus {
     margin-top: 12px;
     color: var(--text-color);
     transition: all 0.3s;
+    line-height: 1.6;
 }
 
-/* markdown styles */
+#response-content strong,
+#response-content b {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
 #response-content h1,
 #response-content h2,
 #response-content h3,
@@ -358,10 +364,11 @@ textarea:focus {
 #response-content h6 {
     margin-top: 1em;
     margin-bottom: 0.5em;
+    line-height: 1.4;
 }
 
 #response-content p {
-    margin-bottom: 1em;
+    margin: 1em 0;
 }
 
 #response-content code {
@@ -376,18 +383,23 @@ textarea:focus {
     padding: 1em;
     border-radius: 8px;
     overflow-x: auto;
+    white-space: pre;
 }
 
 #response-content ul,
 #response-content ol {
-    padding-left: 2em;
-    margin-bottom: 1em;
+    padding-left: 1.5em;
+    margin: 1em 0;
+}
+
+#response-content li {
+    margin-bottom: 0.5em;
 }
 
 #response-content blockquote {
     border-left: 4px solid var(--primary-color);
     padding-left: 1em;
-    margin-left: 0;
+    margin: 1em 0;
     color: var(--text-color);
     opacity: 0.8;
 }
