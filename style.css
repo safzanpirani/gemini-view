@@ -349,14 +349,13 @@ textarea:focus {
     color: var(--text-color);
     transition: all 0.3s;
     line-height: 1.6;
+    font-family: Arial, sans-serif;
 }
 
 #response-content strong,
 #response-content b {
     font-weight: 700 !important;
     color: var(--text-color);
-    position: relative;
-    /* subtle background highlight for bold text */
     background: linear-gradient(
         transparent 60%,
         rgba(var(--primary-color-rgb), 0.1) 40%
@@ -397,6 +396,12 @@ textarea:focus {
     padding: 1em;
     border-radius: 8px;
     overflow-x: auto;
+    margin: 1em 0;
+}
+
+#response-content pre code {
+    background: none;
+    padding: 0;
     white-space: pre;
 }
 
@@ -415,7 +420,7 @@ textarea:focus {
     padding-left: 1em;
     margin: 1em 0;
     color: var(--text-color);
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
 .followup-section {
