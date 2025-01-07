@@ -1,7 +1,6 @@
 export async function onRequest(context) {
   const { request } = context;
 
-  // only allow POST
   if (request.method !== "POST") {
     return new Response("method not allowed", { status: 405 });
   }
@@ -11,7 +10,6 @@ export async function onRequest(context) {
 
   try {
     const payload = await request.json();
-
     const response = await fetch(
       `${geminiUrl}?key=${context.env.GEMINI_API_KEY}`,
       {
@@ -23,12 +21,23 @@ export async function onRequest(context) {
       },
     );
 
-    return response;
+    // get the response data
+    const data = await response.json();
+
+    // return a new Response with the data
+    return new Response(JSON.stringify(data), {
+      headers: {
+        "Content-Type": "application/json",
+        // add CORS headers if needed
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
       },
     });
   }
