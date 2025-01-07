@@ -249,7 +249,7 @@ async function handleImageFile(file) {
 
 // API interaction
 async function makeApiCall(payload) {
-  const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+  const response = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
