@@ -20,7 +20,7 @@ const elements = {
   themeIcon: document.querySelector(".theme-icon"),
   imageUpload: document.getElementById("image-upload"),
   dragDropArea: document.querySelector(".drag-drop-area"),
-  previewImage: document.getElementById("preview-image"),
+  previewImages: document.getElementById("preview-images"),
   systemPrompt: document.getElementById("system-prompt"),
   submitBtn: document.getElementById("submit-btn"),
   followupBtn: document.getElementById("followup-btn"),
@@ -30,6 +30,7 @@ const elements = {
   deletePromptPreset: document.getElementById("delete-prompt-preset"),
   presetButtons: document.querySelector(".preset-buttons"),
   factoryReset: document.getElementById("factory-reset"),
+  fileInputButton: document.querySelector(".file-input-button"),
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -167,10 +168,44 @@ document.addEventListener("paste", async (event) => {
   }
 });
 
-// Image upload handler
-elements.imageUpload.addEventListener("change", function (event) {
-  const file = event.target.files[0];
-  if (file) handleImageFile(file);
+// Handle multiple image uploads
+const imageUpload = document.getElementById('image-upload');
+const previewImages = document.getElementById('preview-images');
+
+imageUpload.addEventListener('change', (event) => {
+    const files = event.target.files;
+    previewImages.innerHTML = ''; // Clear existing previews
+
+    if (files.length > 0) {
+        previewImages.style.display = 'flex';
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imgWrapper = document.createElement('div');
+                imgWrapper.classList.add('image-wrapper');
+
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = 'Image Preview';
+                img.classList.add('preview-image');
+
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = '×';
+                removeBtn.classList.add('remove-image-btn');
+                removeBtn.addEventListener('click', () => {
+                    imgWrapper.remove();
+                    // Optionally, handle the removal from the file input
+                });
+
+                imgWrapper.appendChild(img);
+                imgWrapper.appendChild(removeBtn);
+                previewImages.appendChild(imgWrapper);
+            };
+            reader.readAsDataURL(file);
+        });
+    } else {
+        previewImages.style.display = 'none';
+    }
 });
 
 // Loading spinner helper
@@ -258,21 +293,6 @@ async function preparePayload(prompt, base64Image, isFollowup = false) {
   }
 }
 
-// Image handling
-async function handleImageFile(file) {
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    elements.previewImage.src = e.target.result;
-    elements.previewImage.style.display = "block";
-
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    elements.imageUpload.files = dataTransfer.files;
-  };
-  reader.readAsDataURL(file);
-  conversationHistory = []; // Clear history with new image
-}
-
 // API interaction
 async function makeApiCall(payload) {
   const response = await fetch(API_URL, {
@@ -328,9 +348,9 @@ async function handleSubmit(isFollowup = false) {
     ? elements.followupPrompt.value
     : elements.systemPrompt.value;
 
-  // Only check for image if it's not a follow-up
-  if (!isFollowup && !elements.imageUpload.files[0]) {
-    alert("Please upload an image");
+  // Only check for images if it's not a follow-up
+  if (!isFollowup && elements.imageUpload.files.length === 0) {
+    alert("Please upload at least one image");
     return;
   }
 
@@ -380,8 +400,53 @@ async function handleSubmit(isFollowup = false) {
         },
       };
     } else {
-      const base64Image = await fileToBase64(elements.imageUpload.files[0]);
-      payload = await preparePayload(prompt, base64Image, isFollowup);
+      const files = Array.from(elements.imageUpload.files);
+      if (files.length === 0) {
+        alert("Please upload at least one image");
+        return;
+      }
+
+      // Convert all files to base64
+      const base64Images = await Promise.all(files.map(file => fileToBase64(file)));
+
+      const inlineDataArray = base64Images.map((base64Image, index) => ({
+        inlineData: {
+          mimeType: files[index].type,
+          data: base64Image.split(",")[1],
+        },
+      }));
+
+      payload = {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              ...inlineDataArray
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: parseFloat(elements.temperatureInput.value),
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_NONE",
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_NONE",
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_NONE",
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_NONE",
+            },
+          ],
+        },
+      };
     }
 
     console.log("Sending payload:", JSON.stringify(payload, null, 2));
@@ -443,12 +508,17 @@ function initializeEventListeners() {
   elements.dragDropArea.addEventListener("drop", (e) => {
     e.preventDefault();
     elements.dragDropArea.classList.remove("dragover");
-    const file = e.dataTransfer.files[0];
-    if (file?.type.startsWith("image/")) handleImageFile(file);
+    const files = e.dataTransfer.files;
+    handleMultipleImageFiles(files);
   });
 
   elements.submitBtn.addEventListener("click", () => handleSubmit(false));
   elements.followupBtn.addEventListener("click", () => handleSubmit(true));
+
+  // Add event listener for "Choose Files" button
+  elements.fileInputButton.addEventListener("click", () => {
+    elements.imageUpload.click();
+  });
 
   // Add keyboard support
   elements.dragDropArea.addEventListener("keydown", (e) => {
@@ -457,6 +527,44 @@ function initializeEventListeners() {
       elements.imageUpload.click();
     }
   });
+}
+
+// Function to handle multiple image files from drag-and-drop or "Choose Files"
+function handleMultipleImageFiles(files) {
+  elements.previewImages.innerHTML = ''; // Clear existing previews
+
+  if (files.length > 0) {
+    elements.previewImages.style.display = 'flex';
+    Array.from(files).forEach(file => {
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imgWrapper = document.createElement('div');
+          imgWrapper.classList.add('image-wrapper');
+
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          img.alt = 'Image Preview';
+          img.classList.add('preview-image');
+
+          const removeBtn = document.createElement('button');
+          removeBtn.textContent = '×';
+          removeBtn.classList.add('remove-image-btn');
+          removeBtn.addEventListener('click', () => {
+            imgWrapper.remove();
+            // Optionally, handle the removal from the file input
+          });
+
+          imgWrapper.appendChild(img);
+          imgWrapper.appendChild(removeBtn);
+          elements.previewImages.appendChild(imgWrapper);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  } else {
+    elements.previewImages.style.display = 'none';
+  }
 }
 
 // Initialize

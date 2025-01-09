@@ -31,14 +31,15 @@
                 </div>
             </div>
             <div class="upload-section">
-                <label for="image-upload">upload image:</label>
+                <label for="image-upload">upload image(s):</label>
                 <div class="file-input-wrapper">
                     <input
                         type="file"
                         id="image-upload"
                         accept="image/*"
                         class="file-input"
-                        aria-label="Upload image file"
+                        aria-label="Upload image files"
+                        multiple
                     />
                     <div
                         class="drag-drop-area"
@@ -47,20 +48,15 @@
                         aria-label="Drag and drop area for images"
                     >
                         <span class="drag-drop-text"
-                            >drag & drop an image here</span
+                            >drag & drop images here</span
                         >
                         <span class="or-text">or</span>
                         <button type="button" class="file-input-button">
-                            choose file
+                            choose files
                         </button>
                     </div>
                 </div>
-                <img
-                    id="preview-image"
-                    src="#"
-                    alt="Image Preview"
-                    style="display: none"
-                />
+                <div id="preview-images" class="preview-images" style="display: none;"></div>
             </div>
             <div class="prompt-section">
                 <label for="system-prompt">system prompt:</label>
