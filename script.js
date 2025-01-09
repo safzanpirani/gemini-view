@@ -156,13 +156,14 @@ elements.systemPrompt.value = `you are a witty and humorous dating app assistant
 format each response on a new line starting with a bullet point (•). keep it casual but clever.`;
 
 document.addEventListener("paste", async (event) => {
-  const items = (event.clipboardData || event.originalEvent.clipboardData)
-    .items;
+  const items = (event.clipboardData || event.originalEvent.clipboardData).items;
 
   for (const item of items) {
     if (item.type.indexOf("image") !== -1) {
       const blob = item.getAsFile();
-      await handleImageFile(blob);
+      if (blob) {
+        handleMultipleImageFiles([blob]);
+      }
       break;
     }
   }
@@ -194,7 +195,11 @@ imageUpload.addEventListener('change', (event) => {
                 removeBtn.classList.add('remove-image-btn');
                 removeBtn.addEventListener('click', () => {
                     imgWrapper.remove();
-                    // Optionally, handle the removal from the file input
+                    // Remove the corresponding file from the FileList
+                    const updatedFiles = Array.from(elements.imageUpload.files).filter(f => f !== file);
+                    const dataTransfer = new DataTransfer();
+                    updatedFiles.forEach(f => dataTransfer.items.add(f));
+                    elements.imageUpload.files = dataTransfer.files;
                 });
 
                 imgWrapper.appendChild(img);
@@ -516,9 +521,11 @@ function initializeEventListeners() {
   elements.followupBtn.addEventListener("click", () => handleSubmit(true));
 
   // Add event listener for "Choose Files" button
-  elements.fileInputButton.addEventListener("click", () => {
-    elements.imageUpload.click();
-  });
+  if (elements.fileInputButton) {
+    elements.fileInputButton.addEventListener("click", () => {
+      elements.imageUpload.click();
+    });
+  }
 
   // Add keyboard support
   elements.dragDropArea.addEventListener("keydown", (e) => {
@@ -552,7 +559,11 @@ function handleMultipleImageFiles(files) {
           removeBtn.classList.add('remove-image-btn');
           removeBtn.addEventListener('click', () => {
             imgWrapper.remove();
-            // Optionally, handle the removal from the file input
+            // Remove the corresponding file from the FileList
+            const updatedFiles = Array.from(elements.imageUpload.files).filter(f => f !== file);
+            const dataTransfer = new DataTransfer();
+            updatedFiles.forEach(f => dataTransfer.items.add(f));
+            elements.imageUpload.files = dataTransfer.files;
           });
 
           imgWrapper.appendChild(img);
