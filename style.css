@@ -1,35 +1,33 @@
 :root {
     --bg-color: #ffffff;
-    --text-color: #202124;
-    --primary-color: #1a73e8;
-    --secondary-color: #f8f9fa;
-    --border-color: #ddd;
-    --shadow-color: rgba(0, 0, 0, 0.1);
-    --primary-color-rgb: 26, 115, 232; /* RGB values for your primary color */
+    --text-color: #1a1a1a;
+    --primary-color: #2563eb;
+    --primary-color-rgb: 37, 99, 235;
+    --secondary-color: #f8fafc;
+    --border-color: #e2e8f0;
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    --hover-color: #1d4ed8;
 }
 
 [data-theme="dark"] {
-    --bg-color: #1a1a1a;
-    --text-color: #ffffff;
-    --primary-color: #4285f4;
-    --secondary-color: #2d2d2d;
-    --border-color: #444;
-    --shadow-color: rgba(0, 0, 0, 0.3);
+    --bg-color: #0f172a;
+    --text-color: #f1f5f9;
+    --primary-color: #3b82f6;
+    --primary-color-rgb: 59, 130, 246;
+    --secondary-color: #1e293b;
+    --border-color: #334155;
+    --shadow-color: rgba(0, 0, 0, 0.25);
+    --hover-color: #2563eb;
 }
 
 body {
-    font-family:
-        "Inter",
-        system-ui,
-        -apple-system,
-        sans-serif;
-    background-color: var(--bg-color);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background-color: var(--secondary-color);
     color: var(--text-color);
     margin: 0;
     padding: 20px;
-    transition:
-        background-color 0.3s,
-        color 0.3s;
+    transition: background-color 0.3s, color 0.3s;
+    line-height: 1.5;
 }
 
 .header {
@@ -60,22 +58,20 @@ body {
 
 .container {
     max-width: 800px;
-    margin: 0 auto;
+    margin: 40px auto;
+    padding: 40px;
     background: var(--bg-color);
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px var(--shadow-color);
-    transition:
-        background-color 0.3s,
-        box-shadow 0.3s;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 h1 {
     color: var(--text-color);
     text-align: center;
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 600;
+    margin: 0 0 32px 0;
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
 }
 
 .upload-section,
@@ -86,20 +82,22 @@ h1 {
 
 .preset-buttons {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
-    margin-bottom: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
 .preset-button {
     background-color: var(--secondary-color);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 16px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     text-align: left;
     color: var(--text-color);
+    font-size: 15px;
+    line-height: 1.4;
 }
 
 .preset-button.active {
@@ -115,24 +113,33 @@ h1 {
 
 .preset-controls {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     flex-wrap: wrap;
+    margin: 0 auto;
+    max-width: 100%;
 }
 
 .preset-control-btn {
     flex: 1;
-    padding: 8px;
+    min-width: 140px;
+    padding: 12px 20px;
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 999px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 14px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .preset-control-btn:hover,
 .preset-control-btn:focus {
-    background-color: #1557b0;
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
     outline: none;
 }
 
@@ -189,17 +196,17 @@ label {
 
 .drag-drop-area {
     border: 2px dashed var(--border-color);
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 32px;
     text-align: center;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     background-color: var(--secondary-color);
     position: relative;
 }
 
 .drag-drop-area.dragover {
     border-color: var(--primary-color);
-    background-color: rgba(26, 115, 232, 0.1);
+    background-color: rgba(var(--primary-color-rgb), 0.08);
 }
 
 .drag-drop-text {
@@ -219,10 +226,12 @@ label {
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
+    border-radius: 8px;
+    padding: 12px 20px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 15px;
 }
 
 .file-input-button:hover,
@@ -249,28 +258,36 @@ label {
 textarea {
     width: 100%;
     height: 120px;
-    padding: 12px;
+    padding: 16px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 12px;
     resize: vertical;
     background-color: var(--bg-color);
     color: var(--text-color);
-    transition: all 0.3s;
+    transition: all 0.2s ease;
+    font-size: 15px;
+    line-height: 1.5;
 }
 
 textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    box-shadow: 0 0 0 4px rgba(var(--primary-color-rgb), 0.1);
 }
 
 .temperature-section {
-    margin-bottom: 24px;
+    margin-bottom: 32px;
+    background: var(--bg-color);
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 }
 
 .temperature-section label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 16px;
+    font-weight: 500;
+    color: var(--text-color);
 }
 
 .temperature-section input[type="range"] {
@@ -279,13 +296,14 @@ textarea:focus {
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
+    height: 6px;
 }
 
 .temperature-section input[type="range"]::-webkit-slider-runnable-track {
-    height: 8px;
-    background: var(--secondary-color);
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    border: none;
 }
 
 .temperature-section input[type="range"]::-webkit-slider-thumb {
@@ -295,45 +313,40 @@ textarea:focus {
     height: 20px;
     background: var(--primary-color);
     border-radius: 50%;
-    margin-top: -6px;
+    margin-top: -7px;
     cursor: pointer;
+    border: 3px solid var(--bg-color);
+    box-shadow: 0 0 0 1px var(--border-color);
+    transition: all 0.2s ease;
 }
 
-.temperature-section input[type="range"]::-moz-range-track {
-    height: 8px;
-    background: var(--secondary-color);
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-}
-
-.temperature-section input[type="range"]::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: var(--primary-color);
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
+.temperature-section input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
 }
 
 #temperature-value {
     display: inline-block;
-    margin-left: 8px;
-    font-weight: 500;
-    color: var(--text-color);
+    margin-left: 12px;
+    font-weight: 600;
+    color: var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 14px;
 }
 
 #submit-btn {
     display: block;
     width: 100%;
-    padding: 14px;
+    padding: 16px;
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     font-size: 16px;
-    font-weight: 500;
-    transition: background-color 0.2s;
+    font-weight: 600;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -342,8 +355,9 @@ textarea:focus {
 
 #submit-btn:hover,
 #submit-btn:focus {
-    background-color: #1557b0;
-    outline: none;
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
 }
 
 .response-section {
@@ -555,30 +569,43 @@ button:disabled {
     }
 
     .preset-controls {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 8px;
     }
 
     .preset-control-btn {
-        width: 100%;
+        min-width: 120px;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .preset-buttons {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+    }
+
+    .preset-button {
+        padding: 12px;
+        font-size: 14px;
     }
 
     .drag-drop-area {
-        padding: 15px;
+        padding: 20px;
     }
 
     .file-input-button {
-        width: 100%;
+        width: auto;
+        min-width: 120px;
     }
 
-    textarea,
-    #followup-prompt {
-        height: 100px;
+    .temperature-section {
+        padding: 16px;
     }
 
     #temperature-value {
-        display: block;
-        margin-left: 0;
-        margin-top: 8px;
+        display: inline-block;
+        margin-left: 8px;
+        margin-top: 0;
     }
 
     #submit-btn,
