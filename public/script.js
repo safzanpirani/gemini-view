@@ -568,6 +568,25 @@ function initializeEventListeners() {
     e.preventDefault();
     elements.dragDropArea.classList.remove("dragover");
     const files = e.dataTransfer.files;
+    
+    // Create a new DataTransfer object
+    const dataTransfer = new DataTransfer();
+    
+    // Add existing files if any
+    if (elements.imageUpload.files.length > 0) {
+      Array.from(elements.imageUpload.files).forEach(file => {
+        dataTransfer.items.add(file);
+      });
+    }
+    
+    // Add the new dropped files
+    Array.from(files).forEach(file => {
+      dataTransfer.items.add(file);
+    });
+    
+    // Update the input's files
+    elements.imageUpload.files = dataTransfer.files;
+    
     handleMultipleImageFiles(files);
   });
 
