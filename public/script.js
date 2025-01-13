@@ -120,6 +120,7 @@ function initializePromptPresets() {
   }
 }
 
+
 function updatePromptPresetButtons() {
   elements.presetButtons.innerHTML = "";
 
