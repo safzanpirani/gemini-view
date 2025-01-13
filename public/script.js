@@ -112,6 +112,12 @@ function initializePromptPresets() {
     localStorage.setItem("prompt_presets", JSON.stringify(presets));
   }
   updatePromptPresetButtons();
+
+  // Load the selected preset's prompt into systemPrompt
+  const selectedPresetName = localStorage.getItem("selected_prompt_preset");
+  if (selectedPresetName) {
+    loadPromptPreset(selectedPresetName);
+  }
 }
 
 function updatePromptPresetButtons() {
