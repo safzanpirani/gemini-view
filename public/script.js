@@ -1,5 +1,4 @@
 const API_URL = "/api/gemini";
-// "https://generativelanguage.googleapis.com/v1beta/models/gemini-exp-1206:generateContent";
 
 // State management
 let isLoading = false;
@@ -184,7 +183,8 @@ elements.systemPrompt.value = `you are a witty and humorous dating app assistant
 format each response on a new line starting with a bullet point (•). keep it casual but clever.`;
 
 document.addEventListener("paste", async (event) => {
-  const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+  const items = (event.clipboardData || event.originalEvent.clipboardData)
+    .items;
 
   for (const item of items) {
     if (item.type.indexOf("image") !== -1) {
@@ -192,20 +192,20 @@ document.addEventListener("paste", async (event) => {
       if (blob) {
         // Create a new DataTransfer object
         const dataTransfer = new DataTransfer();
-        
+
         // Add existing files if any
         if (elements.imageUpload.files.length > 0) {
-          Array.from(elements.imageUpload.files).forEach(file => {
+          Array.from(elements.imageUpload.files).forEach((file) => {
             dataTransfer.items.add(file);
           });
         }
-        
+
         // Add the new pasted file
         dataTransfer.items.add(blob);
-        
+
         // Update the input's files
         elements.imageUpload.files = dataTransfer.files;
-        
+
         handleMultipleImageFiles([blob]);
       }
       break;
@@ -214,47 +214,49 @@ document.addEventListener("paste", async (event) => {
 });
 
 // Handle multiple image uploads
-const imageUpload = document.getElementById('image-upload');
-const previewImages = document.getElementById('preview-images');
+const imageUpload = document.getElementById("image-upload");
+const previewImages = document.getElementById("preview-images");
 
-imageUpload.addEventListener('change', (event) => {
-    const files = event.target.files;
-    previewImages.innerHTML = ''; // Clear existing previews
+imageUpload.addEventListener("change", (event) => {
+  const files = event.target.files;
+  previewImages.innerHTML = ""; // Clear existing previews
 
-    if (files.length > 0) {
-        previewImages.style.display = 'flex';
-        Array.from(files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const imgWrapper = document.createElement('div');
-                imgWrapper.classList.add('image-wrapper');
+  if (files.length > 0) {
+    previewImages.style.display = "flex";
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imgWrapper = document.createElement("div");
+        imgWrapper.classList.add("image-wrapper");
 
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.alt = 'Image Preview';
-                img.classList.add('preview-image');
+        const img = document.createElement("img");
+        img.src = e.target.result;
+        img.alt = "Image Preview";
+        img.classList.add("preview-image");
 
-                const removeBtn = document.createElement('button');
-                removeBtn.textContent = '×';
-                removeBtn.classList.add('remove-image-btn');
-                removeBtn.addEventListener('click', () => {
-                    imgWrapper.remove();
-                    // Remove the corresponding file from the FileList
-                    const updatedFiles = Array.from(elements.imageUpload.files).filter(f => f !== file);
-                    const dataTransfer = new DataTransfer();
-                    updatedFiles.forEach(f => dataTransfer.items.add(f));
-                    elements.imageUpload.files = dataTransfer.files;
-                });
-
-                imgWrapper.appendChild(img);
-                imgWrapper.appendChild(removeBtn);
-                previewImages.appendChild(imgWrapper);
-            };
-            reader.readAsDataURL(file);
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "×";
+        removeBtn.classList.add("remove-image-btn");
+        removeBtn.addEventListener("click", () => {
+          imgWrapper.remove();
+          // Remove the corresponding file from the FileList
+          const updatedFiles = Array.from(elements.imageUpload.files).filter(
+            (f) => f !== file,
+          );
+          const dataTransfer = new DataTransfer();
+          updatedFiles.forEach((f) => dataTransfer.items.add(f));
+          elements.imageUpload.files = dataTransfer.files;
         });
-    } else {
-        previewImages.style.display = 'none';
-    }
+
+        imgWrapper.appendChild(img);
+        imgWrapper.appendChild(removeBtn);
+        previewImages.appendChild(imgWrapper);
+      };
+      reader.readAsDataURL(file);
+    });
+  } else {
+    previewImages.style.display = "none";
+  }
 });
 
 // Loading spinner helper
@@ -344,17 +346,26 @@ async function preparePayload(prompt, base64Image, isFollowup = false) {
 
 // API interaction
 async function makeApiCall(payload) {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin", // add this
+      body: JSON.stringify(payload),
+    });
 
-  if (!response.ok) {
-    throw new Error(`API call failed: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `API call failed: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Detailed error:", error);
+    throw error;
   }
-
-  return await response.json();
 }
 
 function factoryReset() {
@@ -456,7 +467,9 @@ async function handleSubmit(isFollowup = false) {
       }
 
       // Convert all files to base64
-      const base64Images = await Promise.all(files.map(file => fileToBase64(file)));
+      const base64Images = await Promise.all(
+        files.map((file) => fileToBase64(file)),
+      );
 
       const inlineDataArray = base64Images.map((base64Image, index) => ({
         inlineData: {
@@ -468,10 +481,7 @@ async function handleSubmit(isFollowup = false) {
       payload = {
         contents: [
           {
-            parts: [
-              { text: prompt },
-              ...inlineDataArray
-            ],
+            parts: [{ text: prompt }, ...inlineDataArray],
           },
         ],
         safetySettings: [
@@ -582,31 +592,33 @@ function initializeEventListeners() {
 
 // Function to handle multiple image files from drag-and-drop or "Choose Files"
 function handleMultipleImageFiles(files) {
-  elements.previewImages.innerHTML = ''; // Clear existing previews
+  elements.previewImages.innerHTML = ""; // Clear existing previews
 
   if (files.length > 0) {
-    elements.previewImages.style.display = 'flex';
-    Array.from(files).forEach(file => {
+    elements.previewImages.style.display = "flex";
+    Array.from(files).forEach((file) => {
       if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          const imgWrapper = document.createElement('div');
-          imgWrapper.classList.add('image-wrapper');
+          const imgWrapper = document.createElement("div");
+          imgWrapper.classList.add("image-wrapper");
 
-          const img = document.createElement('img');
+          const img = document.createElement("img");
           img.src = e.target.result;
-          img.alt = 'Image Preview';
-          img.classList.add('preview-image');
+          img.alt = "Image Preview";
+          img.classList.add("preview-image");
 
-          const removeBtn = document.createElement('button');
-          removeBtn.textContent = '×';
-          removeBtn.classList.add('remove-image-btn');
-          removeBtn.addEventListener('click', () => {
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.classList.add("remove-image-btn");
+          removeBtn.addEventListener("click", () => {
             imgWrapper.remove();
             // Remove the corresponding file from the FileList
-            const updatedFiles = Array.from(elements.imageUpload.files).filter(f => f !== file);
+            const updatedFiles = Array.from(elements.imageUpload.files).filter(
+              (f) => f !== file,
+            );
             const dataTransfer = new DataTransfer();
-            updatedFiles.forEach(f => dataTransfer.items.add(f));
+            updatedFiles.forEach((f) => dataTransfer.items.add(f));
             elements.imageUpload.files = dataTransfer.files;
           });
 
@@ -618,7 +630,7 @@ function handleMultipleImageFiles(files) {
       }
     });
   } else {
-    elements.previewImages.style.display = 'none';
+    elements.previewImages.style.display = "none";
   }
 }
 
