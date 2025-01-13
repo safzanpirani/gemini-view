@@ -567,7 +567,6 @@ function initializeEventListeners() {
   elements.dragDropArea.addEventListener("drop", (e) => {
     e.preventDefault();
     elements.dragDropArea.classList.remove("dragover");
-    const files = e.dataTransfer.files;
     
     // Create a new DataTransfer object
     const dataTransfer = new DataTransfer();
@@ -580,6 +579,7 @@ function initializeEventListeners() {
     }
     
     // Add the new dropped files
+    const files = e.dataTransfer.files;
     Array.from(files).forEach(file => {
       dataTransfer.items.add(file);
     });
