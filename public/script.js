@@ -439,10 +439,13 @@ async function handleSubmit(isFollowup = false) {
     let payload;
     if (isFollowup) {
       // For text-only follow-ups
+      const previousResponse = elements.responseContent.textContent;
+      const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
+      
       payload = {
         contents: {
           role: "user",
-          parts: [{ text: elements.systemPrompt.value + "\n\n" + prompt }],
+          parts: [{ text: elements.systemPrompt.value + "\n\n" + followupPrompt }],
         },
         safetySettings: [
           {
@@ -533,6 +536,12 @@ async function handleSubmit(isFollowup = false) {
       });
 
       elements.responseContent.innerHTML = formattedResponse;
+      
+      // Store the response in conversation history
+      conversationHistory.push({
+        role: "assistant",
+        parts: [{ text: rawResponse }],
+      });
     } else {
       throw new Error("no candidates in api response");
     }
