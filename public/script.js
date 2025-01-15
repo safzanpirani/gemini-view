@@ -536,6 +536,7 @@ async function handleSubmit(isFollowup = false) {
       });
 
       elements.responseContent.innerHTML = formattedResponse;
+      elements.responseContent.closest('.response-section').classList.add('visible');
       
       // Store the response in conversation history
       conversationHistory.push({

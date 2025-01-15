@@ -366,6 +366,11 @@ textarea:focus {
     background-color: var(--secondary-color);
     border-radius: 8px;
     transition: background-color 0.3s;
+    display: none;
+}
+
+.response-section.visible {
+    display: block;
 }
 
 #response-content {
@@ -476,7 +481,7 @@ textarea:focus {
 }
 
 #followup-btn {
-    display: block;
+    display: flex;
     width: 100%;
     padding: 12px;
     margin-top: 12px;
@@ -488,7 +493,6 @@ textarea:focus {
     font-size: 16px;
     font-weight: 500;
     transition: background-color 0.2s;
-    display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -562,26 +566,27 @@ button:disabled {
 @media (max-width: 768px) {
     .container {
         padding: 20px;
+        margin: 20px auto;
+        width: calc(100% - 40px);
+        max-width: none;
     }
 
     h1 {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
+        margin-bottom: 24px;
     }
 
     .preset-controls {
-        flex-direction: row;
-        gap: 8px;
+        flex-direction: column;
     }
 
     .preset-control-btn {
-        min-width: 120px;
-        padding: 10px 16px;
-        font-size: 13px;
+        width: 100%;
+        min-width: 0;
     }
 
     .preset-buttons {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 12px;
+        grid-template-columns: 1fr;
     }
 
     .preset-button {
@@ -594,63 +599,122 @@ button:disabled {
     }
 
     .file-input-button {
-        width: auto;
-        min-width: 120px;
+        padding: 10px 16px;
     }
 
     .temperature-section {
-        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
     }
 
     #temperature-value {
-        display: inline-block;
-        margin-left: 8px;
-        margin-top: 0;
+        margin-left: 0;
+        margin-top: 8px;
     }
 
     #submit-btn,
     #followup-btn {
         padding: 12px;
-        font-size: 14px;
+        font-size: 15px;
+        width: 100%;
+        display: flex;
     }
 
     .factory-reset-wrapper {
-        bottom: 15px;
-        left: 15px;
+        bottom: 10px;
+        left: 10px;
+    }
+
+    /* Improve text input handling */
+    textarea {
+        font-size: 14px;
+        padding: 12px;
+        max-width: 100%;
+        min-height: 100px;
+        box-sizing: border-box;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: pre-wrap;
+    }
+
+    #system-prompt,
+    #followup-prompt {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Improve response content readability */
+    #response-content {
+        font-size: 14px;
+        padding: 12px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    #response-content pre {
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 12px;
+    }
+
+    #response-content code {
+        word-wrap: break-word;
+        white-space: pre-wrap;
     }
 }
 
 @media (max-width: 480px) {
-    .container {
-        padding: 15px;
-    }
-
-    h1 {
-        font-size: 1.25rem;
-    }
-
-    .preset-buttons {
-        grid-template-columns: 1fr;
-    }
-
-    .drag-drop-area {
+    body {
         padding: 10px;
     }
 
+    .container {
+        padding: 15px;
+        margin: 10px auto;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .preset-buttons {
+        gap: 12px;
+    }
+
+    .drag-drop-area {
+        padding: 16px;
+    }
+
     .file-input-button {
-        padding: 6px 12px;
+        padding: 8px 14px;
+        font-size: 14px;
     }
 
     #submit-btn,
     #followup-btn {
         padding: 10px;
-        font-size: 12px;
+        font-size: 14px;
+        width: 100%;
+        display: flex;
     }
 
     .factory-reset-button {
-        width: 35px;
-        height: 35px;
+        width: 36px;
+        height: 36px;
         font-size: 20px;
+    }
+
+    /* Further improve text handling */
+    textarea,
+    #response-content {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    label {
+        font-size: 14px;
+        margin-bottom: 6px;
     }
 }
 
