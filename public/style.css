@@ -729,29 +729,122 @@ button:disabled {
 .image-wrapper {
     position: relative;
     width: 150px;
-    height: 150px;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 .preview-image {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border: 2px solid #ccc;
+    border: 2px solid var(--border-color);
     border-radius: 8px;
+    transition: transform 0.2s ease;
+}
+
+.image-wrapper:hover .preview-image {
+    transform: scale(1.05);
 }
 
 .remove-image-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(0, 0, 0, 0.5);
-    color: #fff;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
     border: none;
     border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    width: 24px;
+    height: 24px;
     cursor: pointer;
-    font-size: 16px;
-    line-height: 25px;
-    text-align: center;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 2;
+}
+
+.remove-image-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+}
+
+/* Improve accessibility focus states */
+.copy-button:focus,
+.remove-image-btn:focus,
+.preset-button:focus,
+.file-input-button:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Mobile responsiveness for new elements */
+@media (max-width: 480px) {
+    .error-message {
+        font-size: 13px;
+        padding: 10px 14px;
+    }
+
+    .copy-button {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .image-wrapper {
+        width: calc(50% - 5px);
+    }
+}
+
+/* Error message styling */
+.error-message {
+    background-color: #fee2e2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease-out;
+}
+
+[data-theme="dark"] .error-message {
+    background-color: #7f1d1d;
+    border-color: #ef4444;
+    color: #fecaca;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Copy button styling */
+.copy-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 12px;
+    transition: all 0.2s ease;
+}
+
+.copy-button:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
 }

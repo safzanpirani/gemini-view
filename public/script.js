@@ -4,6 +4,38 @@ const API_URL = "/api/gemini";
 let isLoading = false;
 let conversationHistory = [];
 
+// Error handling
+function showError(message) {
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error-message';
+  errorDiv.textContent = message;
+  errorDiv.setAttribute('role', 'alert');
+  
+  // Remove after 5 seconds
+  setTimeout(() => errorDiv.remove(), 5000);
+  
+  // Insert at top of container
+  const container = document.querySelector('.container');
+  container.insertBefore(errorDiv, container.firstChild);
+}
+
+// Image validation
+function validateImage(file) {
+  const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+  
+  if (file.size > MAX_SIZE) {
+    showError('File size exceeds 5MB limit');
+    return false;
+  }
+  
+  if (!file.type.startsWith('image/')) {
+    showError('File must be an image');
+    return false;
+  }
+  
+  return true;
+}
+
 marked.setOptions({
   breaks: true, // line breaks
   gfm: true, // github flavored markdown
@@ -190,34 +222,32 @@ elements.systemPrompt.value = `you are a witty and humorous dating app assistant
 format each response on a new line starting with a bullet point (•). keep it casual but clever.`;
 
 document.addEventListener("paste", async (event) => {
-  const items = (event.clipboardData || event.originalEvent.clipboardData)
-    .items;
-
-  for (const item of items) {
-    if (item.type.indexOf("image") !== -1) {
-      const blob = item.getAsFile();
-      if (blob) {
-        // Create a new DataTransfer object
-        const dataTransfer = new DataTransfer();
-
-        // Add existing files if any
-        if (elements.imageUpload.files.length > 0) {
-          Array.from(elements.imageUpload.files).forEach((file) => {
-            dataTransfer.items.add(file);
-          });
-        }
-
-        // Add the new pasted file
-        dataTransfer.items.add(blob);
-
-        // Update the input's files
-        elements.imageUpload.files = dataTransfer.files;
-
-        handleMultipleImageFiles([blob]);
-      }
-      break;
+  const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+  const validImageItems = Array.from(items).filter(item => item.type.indexOf("image") !== -1);
+  
+  if (validImageItems.length === 0) return;
+  
+  // Create a new DataTransfer object
+  const dataTransfer = new DataTransfer();
+  
+  // Add existing files if any
+  if (elements.imageUpload.files.length > 0) {
+    Array.from(elements.imageUpload.files).forEach(file => {
+      dataTransfer.items.add(file);
+    });
+  }
+  
+  // Add all pasted images
+  for (const item of validImageItems) {
+    const blob = item.getAsFile();
+    if (blob && validateImage(blob)) {
+      dataTransfer.items.add(blob);
     }
   }
+  
+  // Update the input's files
+  elements.imageUpload.files = dataTransfer.files;
+  handleMultipleImageFiles(Array.from(dataTransfer.files));
 });
 
 // Handle multiple image uploads
@@ -403,7 +433,7 @@ function factoryReset() {
       });
     }
 
-    alert("All data has been cleared. The page will now reload.");
+    alert("all data has been cleared. The page will now reload.");
     window.location.reload();
   }
 }
@@ -411,18 +441,15 @@ function factoryReset() {
 // Submit handlers
 async function handleSubmit(isFollowup = false) {
   const button = isFollowup ? elements.followupBtn : elements.submitBtn;
-  const prompt = isFollowup
-    ? elements.followupPrompt.value
-    : elements.systemPrompt.value;
+  const prompt = isFollowup ? elements.followupPrompt.value : elements.systemPrompt.value;
 
-  // Only check for images if it's not a follow-up
   if (!isFollowup && elements.imageUpload.files.length === 0) {
-    alert("Please upload at least one image");
+    showError('please upload at least one image');
     return;
   }
 
   if (!prompt.trim()) {
-    alert("Please enter a prompt");
+    showError('please enter a prompt');
     return;
   }
 
@@ -438,7 +465,6 @@ async function handleSubmit(isFollowup = false) {
 
     let payload;
     if (isFollowup) {
-      // For text-only follow-ups
       const previousResponse = elements.responseContent.textContent;
       const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
       
@@ -472,7 +498,7 @@ async function handleSubmit(isFollowup = false) {
     } else {
       const files = Array.from(elements.imageUpload.files);
       if (files.length === 0) {
-        alert("Please upload at least one image");
+        showError('please upload at least one image');
         return;
       }
 
@@ -524,16 +550,9 @@ async function handleSubmit(isFollowup = false) {
 
     if (data.candidates && data.candidates.length > 0) {
       const rawResponse = data.candidates[0].content.parts[0].text;
-      // ensure line breaks are preserved and converted properly
-      const processedResponse = rawResponse
-        .replace(/\n\n/g, "\n\n") // preserve paragraph breaks
-        .replace(/•/g, "\n•") // handle bullet points
-        .trim();
-
-      const formattedResponse = marked.parse(processedResponse, {
-        breaks: true, // enables line breaks without needing two spaces
-        gfm: true, // enables GitHub-flavored markdown
-      });
+      // Sanitize and format the response
+      const sanitizedResponse = DOMPurify.sanitize(rawResponse);
+      const formattedResponse = marked.parse(sanitizedResponse);
 
       elements.responseContent.innerHTML = formattedResponse;
       elements.responseContent.closest('.response-section').classList.add('visible');
@@ -543,20 +562,42 @@ async function handleSubmit(isFollowup = false) {
         role: "assistant",
         parts: [{ text: rawResponse }],
       });
+
+      // Add copy button
+      addCopyButton();
     } else {
       throw new Error("no candidates in api response");
     }
   } catch (error) {
     console.error("Detailed error:", error);
-    console.error("Error message:", error.message);
-    elements.responseContent.textContent =
-      "An error occurred while processing your request";
+    showError(error.message || 'An error occurred while processing your request');
   } finally {
     isLoading = false;
     button.disabled = false;
     button.textContent = isFollowup ? "send follow-up" : "get response";
     if (isFollowup) elements.followupPrompt.value = "";
   }
+}
+
+// Add copy functionality
+function addCopyButton() {
+  // Remove existing copy button if any
+  const existingBtn = elements.responseContent.parentNode.querySelector('.copy-button');
+  if (existingBtn) existingBtn.remove();
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-button';
+  copyBtn.textContent = 'Copy Response';
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(elements.responseContent.innerText);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => copyBtn.textContent = 'Copy Response', 2000);
+    } catch (err) {
+      showError('Failed to copy response');
+    }
+  });
+  elements.responseContent.parentNode.appendChild(copyBtn);
 }
 
 // Event listeners
