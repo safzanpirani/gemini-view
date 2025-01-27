@@ -4,8 +4,8 @@ const API_URL = "/api/gemini";
 let isLoading = false;
 let conversationHistory = [];
 
-// Error handling
-function showError(message) {
+// Enhanced error handling
+function showError(message, targetElement) {
   const errorDiv = document.createElement('div');
   errorDiv.className = 'error-message';
   errorDiv.textContent = message;
@@ -14,9 +14,13 @@ function showError(message) {
   // Remove after 5 seconds
   setTimeout(() => errorDiv.remove(), 5000);
   
-  // Insert at top of container
-  const container = document.querySelector('.container');
-  container.insertBefore(errorDiv, container.firstChild);
+  if (targetElement) {
+    targetElement.parentNode.insertBefore(errorDiv, targetElement.nextSibling);
+  } else {
+    // Default positioning
+    const container = document.querySelector('.container');
+    container.insertBefore(errorDiv, container.firstChild);
+  }
 }
 
 // Image validation
@@ -24,12 +28,12 @@ function validateImage(file) {
   const MAX_SIZE = 5 * 1024 * 1024; // 5MB
   
   if (file.size > MAX_SIZE) {
-    showError('File size exceeds 5MB limit');
+    showError('file size exceeds 5MB limit', elements.imageUpload);
     return false;
   }
   
   if (!file.type.startsWith('image/')) {
-    showError('File must be an image');
+    showError('file must be an image', elements.imageUpload);
     return false;
   }
   
@@ -152,18 +156,20 @@ function initializePromptPresets() {
   }
 }
 
-
+// Enhanced preset button creation
 function updatePromptPresetButtons() {
   elements.presetButtons.innerHTML = "";
 
   const presets = JSON.parse(localStorage.getItem("prompt_presets") || "{}");
+  const selectedPreset = localStorage.getItem("selected_prompt_preset");
+  
   Object.entries(presets).forEach(([name, preset]) => {
     const button = document.createElement("button");
     button.className = "preset-button";
-    button.textContent = name;
+    button.textContent = name; // Instead of innerHTML
     button.onclick = () => loadPromptPreset(name);
 
-    if (name === localStorage.getItem("selected_prompt_preset")) {
+    if (name === selectedPreset) {
       button.classList.add("active");
     }
 
@@ -250,51 +256,58 @@ document.addEventListener("paste", async (event) => {
   handleMultipleImageFiles(Array.from(dataTransfer.files));
 });
 
-// Handle multiple image uploads
-const imageUpload = document.getElementById("image-upload");
-const previewImages = document.getElementById("preview-images");
-
-imageUpload.addEventListener("change", (event) => {
-  const files = event.target.files;
-  previewImages.innerHTML = ""; // Clear existing previews
+// Enhanced image preview handling
+function handleMultipleImageFiles(files) {
+  elements.previewImages.innerHTML = "";
 
   if (files.length > 0) {
-    previewImages.style.display = "flex";
+    elements.previewImages.style.display = "flex";
     Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imgWrapper = document.createElement("div");
-        imgWrapper.classList.add("image-wrapper");
+      if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imgWrapper = document.createElement("div");
+          imgWrapper.classList.add("image-wrapper");
 
-        const img = document.createElement("img");
-        img.src = e.target.result;
-        img.alt = "Image Preview";
-        img.classList.add("preview-image");
+          const img = document.createElement("img");
+          img.src = e.target.result;
+          img.alt = "Image Preview";
+          img.classList.add("preview-image");
+          
+          // Add click to expand functionality
+          img.addEventListener("click", () => {
+            const modal = document.createElement("div");
+            modal.classList.add("image-modal");
+            modal.innerHTML = `<img src="${e.target.result}" alt="Expanded preview">`;
+            document.body.appendChild(modal);
+            
+            modal.addEventListener("click", () => modal.remove());
+          });
 
-        const removeBtn = document.createElement("button");
-        removeBtn.textContent = "×";
-        removeBtn.classList.add("remove-image-btn");
-        removeBtn.addEventListener("click", () => {
-          imgWrapper.remove();
-          // Remove the corresponding file from the FileList
-          const updatedFiles = Array.from(elements.imageUpload.files).filter(
-            (f) => f !== file,
-          );
-          const dataTransfer = new DataTransfer();
-          updatedFiles.forEach((f) => dataTransfer.items.add(f));
-          elements.imageUpload.files = dataTransfer.files;
-        });
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "×";
+          removeBtn.classList.add("remove-image-btn");
+          removeBtn.addEventListener("click", () => {
+            imgWrapper.remove();
+            const updatedFiles = Array.from(elements.imageUpload.files).filter(
+              (f) => f !== file
+            );
+            const dataTransfer = new DataTransfer();
+            updatedFiles.forEach((f) => dataTransfer.items.add(f));
+            elements.imageUpload.files = dataTransfer.files;
+          });
 
-        imgWrapper.appendChild(img);
-        imgWrapper.appendChild(removeBtn);
-        previewImages.appendChild(imgWrapper);
-      };
-      reader.readAsDataURL(file);
+          imgWrapper.appendChild(img);
+          imgWrapper.appendChild(removeBtn);
+          elements.previewImages.appendChild(imgWrapper);
+        };
+        reader.readAsDataURL(file);
+      }
     });
   } else {
-    previewImages.style.display = "none";
+    elements.previewImages.style.display = "none";
   }
-});
+}
 
 // Loading spinner helper
 function createLoadingSpinner() {
@@ -438,30 +451,45 @@ function factoryReset() {
   }
 }
 
-// Submit handlers
+// Enhanced submit handling
 async function handleSubmit(isFollowup = false) {
   const button = isFollowup ? elements.followupBtn : elements.submitBtn;
   const prompt = isFollowup ? elements.followupPrompt.value : elements.systemPrompt.value;
 
   if (!isFollowup && elements.imageUpload.files.length === 0) {
-    showError('please upload at least one image');
+    showError('please upload at least one image', elements.imageUpload);
     return;
   }
 
   if (!prompt.trim()) {
-    showError('please enter a prompt');
+    showError('please enter a prompt', isFollowup ? elements.followupPrompt : elements.systemPrompt);
     return;
   }
 
+  let timeInterval;
   try {
     isLoading = true;
     button.disabled = true;
+    document.body.style.cursor = 'wait';
 
-    const spinner = createLoadingSpinner();
-    const loadingText = document.createTextNode("processing...");
-    button.innerHTML = "";
-    button.appendChild(spinner);
-    button.appendChild(loadingText);
+    const startTime = performance.now();
+    button.innerHTML = `
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <span>processing... (0s)</span>
+      </div>
+    `;
+
+    // Update processing time
+    timeInterval = setInterval(() => {
+      const seconds = Math.round((performance.now() - startTime) / 1000);
+      button.innerHTML = `
+        <div class="loading-state">
+          <div class="loading-spinner"></div>
+          <span>processing... (${seconds}s)</span>
+        </div>
+      `;
+    }, 1000);
 
     let payload;
     if (isFollowup) {
@@ -498,7 +526,7 @@ async function handleSubmit(isFollowup = false) {
     } else {
       const files = Array.from(elements.imageUpload.files);
       if (files.length === 0) {
-        showError('please upload at least one image');
+        showError('please upload at least one image', elements.imageUpload);
         return;
       }
 
@@ -569,12 +597,16 @@ async function handleSubmit(isFollowup = false) {
       throw new Error("no candidates in api response");
     }
   } catch (error) {
-    console.error("Detailed error:", error);
-    showError(error.message || 'An error occurred while processing your request');
+    console.error("detailed error:", error);
+    showError(error.message || 'an error occurred while processing your request', button);
   } finally {
+    if (timeInterval) {
+      clearInterval(timeInterval);
+    }
     isLoading = false;
     button.disabled = false;
-    button.textContent = isFollowup ? "send follow-up" : "get response";
+    document.body.style.cursor = 'default';
+    button.innerHTML = isFollowup ? "send follow-up" : "get response";
     if (isFollowup) elements.followupPrompt.value = "";
   }
 }
@@ -587,20 +619,20 @@ function addCopyButton() {
 
   const copyBtn = document.createElement('button');
   copyBtn.className = 'copy-button';
-  copyBtn.textContent = 'Copy Response';
+  copyBtn.textContent = 'copy response';
   copyBtn.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(elements.responseContent.innerText);
-      copyBtn.textContent = 'Copied!';
-      setTimeout(() => copyBtn.textContent = 'Copy Response', 2000);
+      copyBtn.textContent = 'copied!';
+      setTimeout(() => copyBtn.textContent = 'copy response', 2000);
     } catch (err) {
-      showError('Failed to copy response');
+      showError('failed to copy response', elements.responseContent);
     }
   });
   elements.responseContent.parentNode.appendChild(copyBtn);
 }
 
-// Event listeners
+// Initialize event listeners
 function initializeEventListeners() {
   elements.temperatureInput.addEventListener("input", () => {
     elements.temperatureValue.textContent = elements.temperatureInput.value;
@@ -658,57 +690,31 @@ function initializeEventListeners() {
     });
   }
 
-  // Add keyboard support
-  elements.dragDropArea.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      elements.imageUpload.click();
+  // Add keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      if (document.activeElement === elements.systemPrompt) {
+        handleSubmit(false);
+      } else if (document.activeElement === elements.followupPrompt) {
+        handleSubmit(true);
+      }
     }
   });
-}
 
-// Function to handle multiple image files from drag-and-drop or "Choose Files"
-function handleMultipleImageFiles(files) {
-  elements.previewImages.innerHTML = ""; // Clear existing previews
+  // Add Enter key handler for follow-up textarea
+  elements.followupPrompt.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent new line
+      handleSubmit(true);
+    }
+  });
 
-  if (files.length > 0) {
-    elements.previewImages.style.display = "flex";
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const imgWrapper = document.createElement("div");
-          imgWrapper.classList.add("image-wrapper");
-
-          const img = document.createElement("img");
-          img.src = e.target.result;
-          img.alt = "Image Preview";
-          img.classList.add("preview-image");
-
-          const removeBtn = document.createElement("button");
-          removeBtn.textContent = "×";
-          removeBtn.classList.add("remove-image-btn");
-          removeBtn.addEventListener("click", () => {
-            imgWrapper.remove();
-            // Remove the corresponding file from the FileList
-            const updatedFiles = Array.from(elements.imageUpload.files).filter(
-              (f) => f !== file,
-            );
-            const dataTransfer = new DataTransfer();
-            updatedFiles.forEach((f) => dataTransfer.items.add(f));
-            elements.imageUpload.files = dataTransfer.files;
-          });
-
-          imgWrapper.appendChild(img);
-          imgWrapper.appendChild(removeBtn);
-          elements.previewImages.appendChild(imgWrapper);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  } else {
+  // Add clear all images button handler
+  document.getElementById("clear-all-images").addEventListener("click", () => {
+    elements.imageUpload.value = "";
+    elements.previewImages.innerHTML = "";
     elements.previewImages.style.display = "none";
-  }
+  });
 }
 
 // Initialize

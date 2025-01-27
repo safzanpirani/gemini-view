@@ -56,6 +56,10 @@
                         </button>
                     </div>
                 </div>
+                <div class="preview-header">
+                    <span>selected images</span>
+                    <button id="clear-all-images" class="text-button">clear all</button>
+                </div>
                 <div id="preview-images" class="preview-images" style="display: none;"></div>
             </div>
             <div class="prompt-section">
@@ -79,6 +83,11 @@
                     aria-label="Temperature control"
                 />
                 <span id="temperature-value" aria-live="polite">1</span>
+                <div class="temperature-markers">
+                    <span>0</span>
+                    <span>1</span>
+                    <span>2</span>
+                </div>
             </div>
             <button id="submit-btn" aria-live="polite" role="button">
                 get response

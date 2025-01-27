@@ -88,6 +88,10 @@ h1 {
 }
 
 .preset-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     background-color: var(--secondary-color);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -100,9 +104,12 @@ h1 {
     line-height: 1.4;
 }
 
+.preset-icon { opacity: 0.7; }
+.checkmark { margin-left: auto; }
+
 .preset-button.active {
-    border-color: var(--primary-color);
-    background-color: rgba(26, 115, 232, 0.1);
+    border: 2px solid var(--primary-color);
+    background: rgba(var(--primary-color-rgb), 0.15);
 }
 
 .preset-button:hover,
@@ -174,11 +181,13 @@ h1 {
 }
 
 label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: var(--text-color);
-}
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* Remove the :before pseudo-element reference */
+  }
 
 .file-input-wrapper {
     position: relative;
@@ -205,8 +214,9 @@ label {
 }
 
 .drag-drop-area.dragover {
-    border-color: var(--primary-color);
-    background-color: rgba(var(--primary-color-rgb), 0.08);
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.1);
+    animation: pulse 1.5s infinite;
 }
 
 .drag-drop-text {
@@ -267,6 +277,7 @@ textarea {
     transition: all 0.2s ease;
     font-size: 15px;
     line-height: 1.5;
+    font-family: "JetBrains Mono", monospace;
 }
 
 textarea:focus {
@@ -325,18 +336,20 @@ textarea:focus {
 }
 
 #temperature-value {
-    display: inline-block;
-    margin-left: 12px;
+    display: block;
+    text-align: center;
+    margin: 12px auto 8px;
     font-weight: 600;
     color: var(--primary-color);
     background: rgba(var(--primary-color-rgb), 0.1);
     padding: 4px 12px;
     border-radius: 16px;
     font-size: 14px;
+    width: fit-content;
 }
 
-#submit-btn {
-    display: block;
+#submit-btn, #followup-btn {
+    display: flex;
     width: 100%;
     padding: 16px;
     background-color: var(--primary-color);
@@ -347,10 +360,10 @@ textarea:focus {
     font-size: 16px;
     font-weight: 600;
     transition: all 0.2s ease;
-    display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    min-height: 52px;
 }
 
 #submit-btn:hover,
@@ -361,16 +374,19 @@ textarea:focus {
 }
 
 .response-section {
+    opacity: 0;
+    max-height: 0;
+    transition: all 0.3s ease;
     margin-top: 24px;
     padding: 20px;
     background-color: var(--secondary-color);
     border-radius: 8px;
-    transition: background-color 0.3s;
-    display: none;
 }
 
 .response-section.visible {
-    display: block;
+    opacity: 1;
+    max-height: 1000px;
+    overflow-y: auto;
 }
 
 #response-content {
@@ -472,30 +488,13 @@ textarea:focus {
     background-color: var(--bg-color);
     color: var(--text-color);
     transition: all 0.3s;
+    font-family: "JetBrains Mono", monospace;
 }
 
 #followup-prompt:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
-}
-
-#followup-btn {
-    display: flex;
-    width: 100%;
-    padding: 12px;
-    margin-top: 12px;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
-    transition: background-color 0.2s;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
 }
 
 #followup-btn:hover,
@@ -507,32 +506,26 @@ textarea:focus {
 .loading-spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid var(--secondary-color);
-    border-top: 2px solid var(--primary-color);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin: 0 auto; /* centers horizontally */
-    display: inline-block;
-    vertical-align: middle; /* aligns with text */
-    margin-right: 8px; /* space between spinner and text */
+    margin-right: 8px;
+    flex-shrink: 0;
 }
 
-/* Update the button styles */
-#submit-btn,
-#followup-btn {
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Add styles for the loading state container */
+.loading-state {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
+    width: 100%;
 }
 
 /* darkmode tweaks */
@@ -829,9 +822,8 @@ button:disabled {
 
 /* Copy button styling */
 .copy-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
+    margin: 12px auto 0;
     padding: 8px 16px;
     background-color: var(--primary-color);
     color: white;
@@ -840,11 +832,72 @@ button:disabled {
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    margin-top: 12px;
     transition: all 0.2s ease;
+    width: fit-content;
 }
 
 .copy-button:hover {
     background-color: var(--hover-color);
     transform: translateY(-1px);
+}
+
+#system-prompt, #followup-prompt {
+    font-family: "JetBrains Mono", monospace;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+    100% { transform: scale(1); }
+}
+
+.temperature-markers {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    color: var(--text-color);
+    opacity: 0.7;
+    font-size: 0.9em;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.text-button {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px;
+}
+
+.image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.image-modal img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 8px;
+}
+
+.upload-section, .prompt-section, .temperature-section {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    background: var(--bg-color);
 }
