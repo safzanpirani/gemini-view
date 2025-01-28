@@ -671,17 +671,25 @@ function initializeEventListeners() {
     // Add the new dropped files
     const files = e.dataTransfer.files;
     Array.from(files).forEach(file => {
-      dataTransfer.items.add(file);
+      if (validateImage(file)) {
+        dataTransfer.items.add(file);
+      }
     });
     
     // Update the input's files
     elements.imageUpload.files = dataTransfer.files;
     
-    handleMultipleImageFiles(files);
+    handleMultipleImageFiles(dataTransfer.files);
   });
 
   elements.submitBtn.addEventListener("click", () => handleSubmit(false));
   elements.followupBtn.addEventListener("click", () => handleSubmit(true));
+
+  // Add event listener for file input change
+  elements.imageUpload.addEventListener("change", (e) => {
+    const files = e.target.files;
+    handleMultipleImageFiles(files);
+  });
 
   // Add event listener for "Choose Files" button
   if (elements.fileInputButton) {
