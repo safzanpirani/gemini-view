@@ -40,7 +40,7 @@ export async function onRequest(context) {
   }
 
   const geminiUrl =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
   try {
     const payload = await request.json();
