@@ -4,6 +4,9 @@ const API_URL = "/api/gemini";
 let isLoading = false;
 let conversationHistory = [];
 
+// Response Switcher functionality
+let currentResponseIndex = -1;
+
 // Enhanced error handling
 function showError(message, targetElement) {
   const errorDiv = document.createElement('div');
@@ -586,13 +589,7 @@ async function handleSubmit(isFollowup = false) {
       elements.responseContent.closest('.response-section').classList.add('visible');
       
       // Store the response in conversation history
-      conversationHistory.push({
-        role: "assistant",
-        parts: [{ text: rawResponse }],
-      });
-
-      // Add copy button
-      addCopyButton();
+      handleNewAssistantResponse(rawResponse);
     } else {
       throw new Error("no candidates in api response");
     }
@@ -779,3 +776,53 @@ function handleFiles(files) {
         spinner.classList.add('hidden');
     }, 1000);
 }
+
+// Response Switcher functionality
+function updateResponseContent() {
+    if (currentResponseIndex < 0 || currentResponseIndex >= conversationHistory.length) return;
+    const rawResponse = conversationHistory[currentResponseIndex].parts[0].text;
+    const sanitizedResponse = DOMPurify.sanitize(rawResponse);
+    const formattedResponse = marked.parse(sanitizedResponse);
+    elements.responseContent.innerHTML = formattedResponse;
+}
+
+function updateResponseSwitcher() {
+    const responseIndexElem = document.getElementById('response-index');
+    if (conversationHistory.length === 0) {
+        responseIndexElem.textContent = '0/0';
+    } else {
+        responseIndexElem.textContent = (currentResponseIndex + 1) + '/' + conversationHistory.length;
+    }
+}
+
+function handleNewAssistantResponse(rawResponse) {
+    // Push response and update index
+    conversationHistory.push({
+        role: 'assistant',
+        parts: [{ text: rawResponse }]
+    });
+    currentResponseIndex = conversationHistory.length - 1;
+    updateResponseContent();
+    updateResponseSwitcher();
+    addCopyButton();
+}
+
+// Attach event listeners for the response switcher buttons
+const prevBtn = document.getElementById('prev-response');
+const nextBtn = document.getElementById('next-response');
+
+prevBtn.addEventListener('click', function() {
+    if (currentResponseIndex > 0) {
+        currentResponseIndex--;
+        updateResponseContent();
+        updateResponseSwitcher();
+    }
+});
+
+nextBtn.addEventListener('click', function() {
+    if (currentResponseIndex < conversationHistory.length - 1) {
+        currentResponseIndex++;
+        updateResponseContent();
+        updateResponseSwitcher();
+    }
+});
