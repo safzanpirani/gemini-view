@@ -62,6 +62,10 @@
                 </div>
                 <div id="upload-spinner" class="spinner hidden"></div>
                 <div id="preview-images" class="preview-images" style="display: none;"></div>
+                <div class="upload-info">
+                    <span id="image-count">no images uploaded</span>
+                    <span id="total-size">0 kb total</span>
+                </div>
             </div>
             <div class="prompt-section">
                 <label for="system-prompt">system prompt:</label>
@@ -71,24 +75,6 @@
                     aria-label="System prompt input"
                     role="textbox"
                 ></textarea>
-            </div>
-            <div class="temperature-section">
-                <label for="temperature">temperature (0-2):</label>
-                <input
-                    type="range"
-                    id="temperature"
-                    min="0"
-                    max="2"
-                    step="0.1"
-                    value="1"
-                    aria-label="Temperature control"
-                />
-                <span id="temperature-value" aria-live="polite">1</span>
-                <div class="temperature-markers">
-                    <span>0</span>
-                    <span>1</span>
-                    <span>2</span>
-                </div>
             </div>
             <button id="submit-btn" aria-live="polite" role="button">
                 get response
@@ -116,6 +102,24 @@
                 <button id="followup-btn" aria-live="polite" role="button">
                     send follow-up
                 </button>
+            </div>
+            <div class="temperature-section">
+                <label for="temperature">temperature (0-2):</label>
+                <input
+                    type="range"
+                    id="temperature"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value="1"
+                    aria-label="Temperature control"
+                />
+                <span id="temperature-value" aria-live="polite">1</span>
+                <div class="temperature-markers">
+                    <span>0</span>
+                    <span>1</span>
+                    <span>2</span>
+                </div>
             </div>
         </div>
         <div class="factory-reset-wrapper">

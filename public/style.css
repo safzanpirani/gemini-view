@@ -378,7 +378,6 @@ textarea:focus {
     opacity: 0;
     max-height: 0;
     transition: all 0.3s ease;
-    margin-top: 24px;
     padding: 20px;
     background-color: var(--secondary-color);
     border-radius: 8px;
@@ -388,6 +387,7 @@ textarea:focus {
     opacity: 1;
     max-height: 1000px;
     overflow-y: auto;
+    margin-top: 24px;
 }
 
 #response-content {
@@ -990,4 +990,50 @@ input:focus, textarea:focus {
 [data-theme="dark"] p,
 [data-theme="dark"] .preset-button {
   color: var(--text-color) !important;
+}
+
+/* Add gap between followup section and temperature section */
+.followup-section + .temperature-section {
+    margin-top: 24px;
+}
+
+/* Dark mode overrides for response switcher buttons */
+[data-theme="dark"] #prev-response,
+[data-theme="dark"] #next-response {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] #prev-response:hover,
+[data-theme="dark"] #next-response:hover {
+    background-color: var(--bg-color);
+}
+
+/* Styles for upload-info container */
+.upload-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    margin-top: 12px;
+    padding: 0 8px;
+    width: 100%;
+    color: #4b5563; /* dark grey for light mode */
+}
+
+.upload-info span {
+    flex: 0 0 auto;
+}
+
+#image-count {
+    text-align: left;
+}
+
+#total-size {
+    text-align: right;
+}
+
+[data-theme="dark"] .upload-info {
+    color: #9ca3af; /* a grey tone for dark mode */
 }

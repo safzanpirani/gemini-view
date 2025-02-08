@@ -310,6 +310,7 @@ function handleMultipleImageFiles(files) {
   } else {
     elements.previewImages.style.display = "none";
   }
+  updateUploadInfo();
 }
 
 // Loading spinner helper
@@ -826,3 +827,24 @@ nextBtn.addEventListener('click', function() {
         updateResponseSwitcher();
     }
 });
+
+// Function to update the upload information (image count and total size)
+function updateUploadInfo() {
+    const files = elements.imageUpload.files;
+    const count = files.length;
+    let totalBytes = 0;
+    for (let i = 0; i < count; i++) {
+        totalBytes += files[i].size;
+    }
+    let totalSizeText;
+    if (totalBytes < 1048576) { // less than 1MB
+        const totalKB = Math.round(totalBytes / 1024);
+        totalSizeText = totalKB + " kb total";
+    } else {
+        const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
+        totalSizeText = totalMB + " mb total";
+    }
+    const imageText = count === 1 ? "image" : "images";
+    document.getElementById('image-count').textContent = count + " " + imageText;
+    document.getElementById('total-size').textContent = totalSizeText;
+}
