@@ -26,15 +26,25 @@ function showError(message, targetElement) {
   }
 }
 
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast-message';
+  toast.textContent = message;
+  toast.style.position = 'fixed';
+  toast.style.bottom = '20px';
+  toast.style.left = '50%';
+  toast.style.transform = 'translateX(-50%)';
+  toast.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  toast.style.color = '#fff';
+  toast.style.padding = '10px 20px';
+  toast.style.borderRadius = '5px';
+  toast.style.zIndex = '10000';
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 3000);
+}
+
 // Image validation
 function validateImage(file) {
-  const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-  
-  if (file.size > MAX_SIZE) {
-    showError('file size exceeds 5MB limit', elements.imageUpload);
-    return false;
-  }
-  
   if (!file.type.startsWith('image/')) {
     showError('file must be an image', elements.imageUpload);
     return false;
@@ -260,18 +270,20 @@ document.addEventListener("paste", async (event) => {
 });
 
 // Enhanced image preview handling
-function handleMultipleImageFiles(files) {
-  elements.previewImages.innerHTML = "";
+async function handleMultipleImageFiles(files) {
+    await compressImagesIfNeeded();
+    // Use updated files after potential compression
+    files = elements.imageUpload.files;
+    elements.previewImages.innerHTML = "";
 
-  if (files.length > 0) {
-    elements.previewImages.style.display = "flex";
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith("image/")) {
+    if (files.length > 0) {
+      elements.previewImages.style.display = "flex";
+      Array.from(files).forEach((file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
           const imgWrapper = document.createElement("div");
           imgWrapper.classList.add("image-wrapper");
-
+          
           const img = document.createElement("img");
           img.src = e.target.result;
           img.alt = "Image Preview";
@@ -281,36 +293,49 @@ function handleMultipleImageFiles(files) {
           img.addEventListener("click", () => {
             const modal = document.createElement("div");
             modal.classList.add("image-modal");
-            modal.innerHTML = `<img src="${e.target.result}" alt="Expanded preview">`;
+            modal.innerHTML = `<img src=\"${e.target.result}\" alt=\"Expanded preview\">`;
             document.body.appendChild(modal);
-            
             modal.addEventListener("click", () => modal.remove());
           });
-
+          
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "×";
           removeBtn.classList.add("remove-image-btn");
           removeBtn.addEventListener("click", () => {
             imgWrapper.remove();
-            const updatedFiles = Array.from(elements.imageUpload.files).filter(
-              (f) => f !== file
-            );
+            const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
             const dataTransfer = new DataTransfer();
             updatedFiles.forEach((f) => dataTransfer.items.add(f));
             elements.imageUpload.files = dataTransfer.files;
           });
-
+          
           imgWrapper.appendChild(img);
           imgWrapper.appendChild(removeBtn);
+          
+          // If the image was compressed, add a lightning icon
+          if (file.compressed) {
+            const lightningIcon = document.createElement("span");
+            lightningIcon.textContent = "⚡";
+            lightningIcon.classList.add("compressed-icon");
+            lightningIcon.style.position = "absolute";
+            lightningIcon.style.bottom = "5px";
+            lightningIcon.style.right = "5px";
+            lightningIcon.style.fontSize = "20px";
+            lightningIcon.style.cursor = "pointer";
+            lightningIcon.addEventListener("mouseenter", () => {
+              showToast("this image was compressed because it was too large");
+            });
+            imgWrapper.appendChild(lightningIcon);
+          }
+          
           elements.previewImages.appendChild(imgWrapper);
         };
         reader.readAsDataURL(file);
-      }
-    });
-  } else {
-    elements.previewImages.style.display = "none";
-  }
-  updateUploadInfo();
+      });
+    } else {
+      elements.previewImages.style.display = "none";
+    }
+    updateUploadInfo();
 }
 
 // Loading spinner helper
@@ -342,6 +367,49 @@ function fileToBase64(file) {
     reader.onerror = (error) => reject(error);
     reader.readAsDataURL(file);
   });
+}
+
+// New functions to compress images if total size exceeds 5MB
+async function compressImage(file) {
+  const COMPRESSION_QUALITY = 0.7; // lowered quality for more aggressive compression
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0);
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), { type: "image/webp" });
+        newFile.compressed = true;
+        resolve(newFile);
+      } else {
+        resolve(file);
+      }
+    }, 'image/webp', COMPRESSION_QUALITY);
+  });
+}
+
+async function compressImagesIfNeeded() {
+  const THRESHOLD = 5 * 1024 * 1024; // 5MB
+  let files = Array.from(elements.imageUpload.files);
+  let totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  if (totalSize <= THRESHOLD) return;
+  let indices = files.map((f, i) => i);
+  indices.sort((a, b) => files[b].size - files[a].size);
+  for (let i of indices) {
+    if (totalSize <= THRESHOLD) break;
+    if (!files[i].compressed) {
+      const originalSize = files[i].size;
+      const compressedFile = await compressImage(files[i]);
+      files[i] = compressedFile;
+      totalSize = totalSize - originalSize + compressedFile.size;
+    }
+  }
+  const dataTransfer = new DataTransfer();
+  files.forEach(file => dataTransfer.items.add(file));
+  elements.imageUpload.files = dataTransfer.files;
 }
 
 async function preparePayload(prompt, base64Image, isFollowup = false) {
