@@ -278,6 +278,7 @@ textarea {
     font-size: 15px;
     line-height: 1.5;
     font-family: "JetBrains Mono", monospace;
+    box-sizing: border-box;
 }
 
 textarea:focus {
@@ -605,19 +606,6 @@ button:disabled {
         margin-top: 8px;
     }
 
-    #submit-btn,
-    #followup-btn {
-        padding: 12px;
-        font-size: 15px;
-        width: 100%;
-        display: flex;
-    }
-
-    .factory-reset-wrapper {
-        bottom: 10px;
-        left: 10px;
-    }
-
     /* Improve text input handling */
     textarea {
         font-size: 14px;
@@ -900,4 +888,106 @@ button:disabled {
     padding: 20px;
     margin-bottom: 24px;
     background: var(--bg-color);
+}
+
+/* Custom UI/UX Enhancements */
+
+.spinner {
+  border: 4px solid var(--border-color);
+  border-top: 4px solid var(--primary-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner.hidden {
+  display: none;
+}
+
+.drag-drop-area {
+  transition: background-color 0.3s, border 0.3s;
+  border: 2px dashed var(--border-color);
+  background-color: var(--secondary-color);
+  padding: 20px;
+}
+
+.drag-drop-area.dragover {
+  border-color: var(--primary-color);
+  background-color: var(--bg-color);
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 960px;
+  margin: auto;
+  padding: 20px;
+  background-color: var(--bg-color);
+  box-shadow: 0 2px 4px var(--shadow-color);
+  border-radius: 8px;
+}
+
+button {
+  transition: background-color 0.2s, transform 0.2s;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--hover-color);
+  color: #fff;
+  transform: scale(1.02);
+}
+
+input, textarea {
+  transition: border 0.2s;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--hover-color);
+  outline: none;
+}
+
+/* Dark mode overrides for interactive elements */
+[data-theme="dark"] .factory-reset-button {
+  background-color: #a31215;
+  color: #fff;
+}
+
+[data-theme="dark"] .file-input-button {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+[data-theme="dark"] .preset-control-btn {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+/* Additional Dark Mode Overrides for Consistent Text Color */
+[data-theme="dark"] .drag-drop-text,
+[data-theme="dark"] .or-text,
+[data-theme="dark"] label,
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6,
+[data-theme="dark"] p,
+[data-theme="dark"] .preset-button {
+  color: var(--text-color) !important;
 }

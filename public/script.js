@@ -729,3 +729,53 @@ function initializeEventListeners() {
 initTheme();
 initializePromptPresets(); // Add this line
 initializeEventListeners();
+
+// UI/UX enhancements: drag-and-drop visual feedback and file upload spinner
+
+elements.dragDropArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    elements.dragDropArea.classList.add('dragover');
+});
+
+elements.dragDropArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    elements.dragDropArea.classList.remove('dragover');
+});
+
+elements.dragDropArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    elements.dragDropArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFiles(files);
+      e.dataTransfer.clearData();
+    }
+});
+
+elements.imageUpload.addEventListener('change', function(e) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFiles(files);
+    }
+});
+
+function handleFiles(files) {
+    const spinner = document.getElementById('upload-spinner');
+    spinner.classList.remove('hidden');
+    
+    // Process each file
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (validateImage(file)) {
+            // Use existing preview function if available or add your preview logic here
+            if (typeof addImagePreview === 'function') {
+              addImagePreview(file);
+            }
+        }
+    }
+    
+    // Simulate processing delay then hide spinner
+    setTimeout(() => {
+        spinner.classList.add('hidden');
+    }, 1000);
+}
