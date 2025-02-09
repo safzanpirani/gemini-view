@@ -7,12 +7,15 @@
         <link rel="stylesheet" href="style.css" />
     </head>
     <body>
+        <button id="global-history-toggle" class="global-history-button">history</button>
         <div class="container">
             <div class="header">
                 <h1>gemini 2.0 flash image expo</h1>
-                <button id="theme-toggle" aria-label="Toggle color theme">
-                    <span class="theme-icon">🌙</span>
-                </button>
+                <div class="header-buttons">
+                    <button id="theme-toggle" aria-label="Toggle color theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
             </div>
             <div class="preset-section">
                 <div class="preset-buttons">
@@ -134,5 +137,17 @@
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
         <script src="script.js"></script>
+        <!-- History Modal -->
+        <div id="history-modal" class="history-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>History</h2>
+                    <button id="close-history" aria-label="Close History">&times;</button>
+                </div>
+                <div id="history-content">
+                    <!-- History records will be injected here -->
+                </div>
+            </div>
+        </div>
     </body>
 </html>

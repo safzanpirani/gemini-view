@@ -659,6 +659,9 @@ async function handleSubmit(isFollowup = false) {
       
       // Store the response in conversation history
       handleNewAssistantResponse(rawResponse);
+      
+      // Add history entry: record current prompt, preview images HTML, and raw response
+      addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
     } else {
       throw new Error("no candidates in api response");
     }
@@ -916,3 +919,80 @@ function updateUploadInfo() {
     document.getElementById('image-count').textContent = count + " " + imageText;
     document.getElementById('total-size').textContent = totalSizeText;
 }
+
+// --- History Feature ---
+
+// Global array to store history entries
+let historyEntries = [];
+
+// Load history entries from localStorage
+function loadHistoryEntries() {
+  const stored = localStorage.getItem('historyEntries');
+  historyEntries = stored ? JSON.parse(stored) : [];
+}
+
+// Save history entries to localStorage
+function saveHistoryEntries() {
+  localStorage.setItem('historyEntries', JSON.stringify(historyEntries));
+}
+
+// Function to add a history entry and persist it
+function addHistoryEntry(requestPrompt, imagesHTML, responseText) {
+  loadHistoryEntries();
+  const newEntry = {
+    prompt: requestPrompt,
+    imagesHTML: imagesHTML,
+    responseText: responseText
+  };
+  historyEntries.push(newEntry);
+  saveHistoryEntries();
+}
+
+// Function to update the history modal content by loading from localStorage
+function updateHistoryModal() {
+  loadHistoryEntries();
+  const historyContent = document.getElementById('history-content');
+  historyContent.innerHTML = "";
+  historyEntries.forEach((entry, idx) => {
+    const entryContainer = document.createElement('div');
+    entryContainer.className = 'history-entry';
+    entryContainer.innerHTML = `
+      <div class="entry-header"><strong>Request ${idx + 1}:</strong> ${entry.prompt}</div>
+      <div class="entry-images">${entry.imagesHTML}</div>
+      <div class="entry-response"><strong>Response:</strong> ${entry.responseText}</div>
+      <hr />
+    `;
+    historyContent.appendChild(entryContainer);
+  });
+}
+
+// Event listeners for history modal toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const historyModal = document.getElementById('history-modal');
+    const globalHistoryToggleBtn = document.getElementById('global-history-toggle');
+    const closeHistoryBtn = document.getElementById('close-history');
+
+    // Open history modal
+    if (globalHistoryToggleBtn) {
+        globalHistoryToggleBtn.addEventListener('click', function() {
+            updateHistoryModal();
+            historyModal.classList.add('visible');
+        });
+    }
+
+    // Close history modal when clicking the X button
+    if (closeHistoryBtn) {
+        closeHistoryBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            historyModal.classList.remove('visible');
+        });
+    }
+
+    // Close history modal when clicking outside
+    historyModal.addEventListener('click', function(e) {
+        if (e.target === historyModal) {
+            historyModal.classList.remove('visible');
+        }
+    });
+});
