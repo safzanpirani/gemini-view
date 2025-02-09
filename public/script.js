@@ -922,24 +922,48 @@ function updateUploadInfo() {
 
 // --- History Feature ---
 
-// Global array to store history entries
-let historyEntries = [];
+const MAX_HISTORY_ENTRIES = 20; // Keep only the most recent 20 entries
 
-// Load history entries from localStorage
+// Load history entries from localStorage with error handling
 function loadHistoryEntries() {
-  const stored = localStorage.getItem('historyEntries');
-  historyEntries = stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem('historyEntries');
+    historyEntries = stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading history:', error);
+    historyEntries = [];
+  }
 }
 
-// Save history entries to localStorage
+// Save history entries to localStorage with error handling
 function saveHistoryEntries() {
-  localStorage.setItem('historyEntries', JSON.stringify(historyEntries));
+  try {
+    // Keep only the most recent entries
+    if (historyEntries.length > MAX_HISTORY_ENTRIES) {
+      historyEntries = historyEntries.slice(-MAX_HISTORY_ENTRIES);
+    }
+    
+    // Try to save, if it fails, keep reducing entries until it works
+    while (historyEntries.length > 0) {
+      try {
+        localStorage.setItem('historyEntries', JSON.stringify(historyEntries));
+        break; // Successfully saved
+      } catch (e) {
+        // If storage is full, remove the oldest entry and try again
+        historyEntries = historyEntries.slice(-Math.floor(historyEntries.length * 0.8)); // Remove 20% of oldest entries
+      }
+    }
+  } catch (error) {
+    console.error('Error saving history:', error);
+    showError('Could not save to history due to storage limits');
+  }
 }
 
 // Function to add a history entry and persist it
 function addHistoryEntry(requestPrompt, imagesHTML, responseText) {
   loadHistoryEntries();
   const newEntry = {
+    timestamp: new Date().toISOString(),
     prompt: requestPrompt,
     imagesHTML: imagesHTML,
     responseText: responseText
@@ -953,12 +977,28 @@ function updateHistoryModal() {
   loadHistoryEntries();
   const historyContent = document.getElementById('history-content');
   historyContent.innerHTML = "";
+  
+  if (historyEntries.length === 0) {
+    historyContent.innerHTML = '<div class="no-history">No history entries yet</div>';
+    return;
+  }
+
   historyEntries.forEach((entry, idx) => {
     const entryContainer = document.createElement('div');
     entryContainer.className = 'history-entry';
+    
+    // Format the timestamp if it exists
+    const timestamp = entry.timestamp ? 
+      new Date(entry.timestamp).toLocaleString() : 
+      'No timestamp';
+    
     entryContainer.innerHTML = `
-      <div class="entry-header"><strong>Request ${idx + 1}:</strong> ${entry.prompt}</div>
-      <div class="entry-images">${entry.imagesHTML}</div>
+      <div class="entry-header">
+        <strong>Request ${historyEntries.length - idx}:</strong>
+        <span class="entry-timestamp">${timestamp}</span>
+      </div>
+      <div class="entry-prompt">${entry.prompt}</div>
+      <div class="entry-images">${entry.imagesHTML || ''}</div>
       <div class="entry-response"><strong>Response:</strong> ${entry.responseText}</div>
       <hr />
     `;

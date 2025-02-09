@@ -1125,3 +1125,47 @@ input:focus, textarea:focus {
     background-color: var(--primary-color);
     color: #fff;
 }
+
+/* History Entry Styles */
+.history-entry {
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-color);
+}
+
+.entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.entry-timestamp {
+    font-size: 14px;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.entry-prompt {
+    margin-bottom: 12px;
+    padding: 8px;
+    background-color: var(--secondary-color);
+    border-radius: 4px;
+}
+
+.no-history {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+/* Ensure images in history don't overflow */
+.entry-images img {
+    max-width: 150px;
+    height: auto;
+    margin: 4px;
+    border-radius: 4px;
+}
