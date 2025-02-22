@@ -371,13 +371,24 @@ function fileToBase64(file) {
 
 // New functions to compress images if total size exceeds 5MB
 async function compressImage(file) {
-  const COMPRESSION_QUALITY = 0.7; // lowered quality for more aggressive compression
+  const COMPRESSION_QUALITY = 0.7;
+  const RESIZE_RATIO = 0.75; // 75% of original dimensions
+  
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  
+  // If file is large, resize to 75% dimensions first
+  if (file.size > 1024 * 1024) { // If larger than 1MB
+    canvas.width = bitmap.width * RESIZE_RATIO;
+    canvas.height = bitmap.height * RESIZE_RATIO;
+  } else {
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+  }
+  
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       if (blob) {
@@ -767,22 +778,16 @@ function initializeEventListeners() {
     });
   }
 
-  // Add keyboard shortcuts
+  // New global Enter key handler to trigger submission anywhere (use shift+Enter for a newline):
   document.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      if (document.activeElement === elements.systemPrompt) {
-        handleSubmit(false);
-      } else if (document.activeElement === elements.followupPrompt) {
-        handleSubmit(true);
-      }
-    }
-  });
-
-  // Add Enter key handler for follow-up textarea
-  elements.followupPrompt.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Prevent new line
-      handleSubmit(true);
+      e.preventDefault();
+      // If the active element is the followup prompt, treat it as a followup submission; otherwise, use the main prompt
+      if (document.activeElement && document.activeElement.id === "followup-prompt") {
+        handleSubmit(true);
+      } else {
+        handleSubmit(false);
+      }
     }
   });
 
