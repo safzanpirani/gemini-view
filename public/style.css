@@ -54,6 +54,29 @@ body {
 
 .theme-icon {
     font-size: 24px;
+    color: var(--text-color);
+}
+
+/* Light mode */
+.theme-icon.fa-sun {
+    display: none;
+}
+
+.theme-icon.fa-moon {
+    display: inline-block;
+}
+
+/* Dark mode */
+[data-theme="dark"] .theme-icon.fa-moon {
+    display: none;
+}
+
+[data-theme="dark"] .theme-icon.fa-sun {
+    display: inline-block;
+}
+
+.fa-cloud-upload-alt {
+    color: var(--primary-color);
 }
 
 .container {

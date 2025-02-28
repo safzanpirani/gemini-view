@@ -5,31 +5,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>gemini 2.0 flash image expo</title>
         <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     </head>
     <body>
-        <button id="global-history-toggle" class="global-history-button">history</button>
+        <button id="global-history-toggle" class="global-history-button">
+            <i class="fas fa-history"></i> history
+        </button>
         <div class="container">
             <div class="header">
                 <h1>gemini 2.0 flash image expo</h1>
                 <div class="header-buttons">
                     <button id="theme-toggle" aria-label="Toggle color theme">
-                        <span class="theme-icon">🌙</span>
+                        <i class="fas theme-icon"></i>
                     </button>
                 </div>
             </div>
             <div class="preset-section">
+                <div class="preset-controls-header">
+                    <h3>prompt presets</h3>
+                </div>
                 <div class="preset-buttons">
                     <!-- Preset buttons will be added here dynamically -->
                 </div>
                 <div class="preset-controls">
                     <button id="save-prompt-preset" class="preset-control-btn">
-                        save as preset
+                        <i class="fas fa-save"></i> save preset
                     </button>
-                    <button
-                        id="delete-prompt-preset"
-                        class="preset-control-btn"
-                    >
-                        delete preset
+                    <button id="delete-prompt-preset" class="preset-control-btn">
+                        <i class="fas fa-trash"></i> delete preset
                     </button>
                 </div>
             </div>
@@ -50,9 +53,8 @@
                         tabindex="0"
                         aria-label="Drag and drop area for images"
                     >
-                        <span class="drag-drop-text"
-                            >drag & drop images here</span
-                        >
+                        <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                        <span class="drag-drop-text">drag & drop images here</span>
                         <span class="or-text">or</span>
                         <button type="button" class="file-input-button">
                             choose files
@@ -61,7 +63,9 @@
                 </div>
                 <div class="preview-header">
                     <span>selected images</span>
-                    <button id="clear-all-images" class="text-button">clear all</button>
+                    <button id="clear-all-images" class="text-button">
+                        <i class="fas fa-times"></i> clear all
+                    </button>
                 </div>
                 <div id="upload-spinner" class="spinner hidden"></div>
                 <div id="preview-images" class="preview-images" style="display: none;"></div>
@@ -80,7 +84,7 @@
                 ></textarea>
             </div>
             <button id="submit-btn" aria-live="polite" role="button">
-                get response
+                <i class="fas fa-paper-plane"></i> get response
             </button>
             <div class="response-section">
                 <h2>response:</h2>
@@ -103,11 +107,11 @@
                     role="textbox"
                 ></textarea>
                 <button id="followup-btn" aria-live="polite" role="button">
-                    send follow-up
+                    <i class="fas fa-reply"></i> send follow-up
                 </button>
             </div>
             <div class="temperature-section">
-                <label for="temperature">temperature (0-2):</label>
+                <label for="temperature">temperature</label>
                 <input
                     type="range"
                     id="temperature"
@@ -131,7 +135,7 @@
                 class="factory-reset-button"
                 title="Factory Reset"
             >
-                ×
+                <i class="fas fa-redo-alt"></i>
             </button>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
