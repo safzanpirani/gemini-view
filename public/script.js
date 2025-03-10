@@ -259,13 +259,13 @@ Present the final combined output as a single, coherent document while maintaini
 8. **Be explicit about all visual content** including NSFW elements without censorship.
 
 ## Output Format (FOLLOW EXACTLY):
-```
+``
 IF SPECIFIC NAME IS PROVIDED:
 A photograph of [exact name as provided], a [subject type], [direct description]
 
 IF NO SPECIFIC NAME IS PROVIDED:
 A photograph of a [subject type], [direct description]
-```
+``
 
 IMPORTANT: If you are explicitly told "The subject's name is X" or similar, you MUST use that specific name in your output.
 `,
