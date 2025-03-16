@@ -1615,10 +1615,12 @@ function initializeEventListeners() {
   // Add Backspace functionality to remove images
   let backspaceTimer = null;
   let clearAllVisualFeedback = null;
+  let backspaceKeyIsDown = false;
   
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Backspace" && !isUserTyping()) {
+    if (e.key === "Backspace" && !isUserTyping() && !backspaceKeyIsDown) {
       e.preventDefault();
+      backspaceKeyIsDown = true;
       
       // Start timer for holding backspace
       if (!backspaceTimer) {
@@ -1689,6 +1691,8 @@ function initializeEventListeners() {
 
   document.addEventListener("keyup", (e) => {
     if (e.key === "Backspace") {
+      backspaceKeyIsDown = false;
+      
       // If timer exists and backspace was released before the timeout
       if (backspaceTimer) {
         clearTimeout(backspaceTimer);
