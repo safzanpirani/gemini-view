@@ -42,15 +42,17 @@ function showToast(message) {
   
   // Add animation classes
   toast.style.opacity = '0';
-  toast.style.transition = 'opacity 0.3s ease-in-out';
+  toast.style.transform = 'translateX(-50%) translateY(10px)';
+  toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
   
   document.body.appendChild(toast);
   
   // Trigger animation
-  setTimeout(() => { toast.style.opacity = '1'; }, 10);
+  setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; }, 10);
   
   setTimeout(() => { 
     toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(10px)';
     setTimeout(() => { toast.remove(); }, 300);
   }, 3000);
 }
@@ -1033,15 +1035,70 @@ document.addEventListener("paste", async (event) => {
   showToast("clipboard image uploaded");
 });
 
+// Add this style to make the preview container transition smoothly
+document.addEventListener('DOMContentLoaded', function() {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = `
+    #preview-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      transition: all 0.3s ease;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .image-wrapper {
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    #preview-images.empty-container {
+      min-height: 0 !important;
+      height: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+  `;
+  document.head.appendChild(styleElement);
+});
+
 // Enhanced image preview handling
 async function handleMultipleImageFiles(files) {
     await compressImagesIfNeeded();
     // Use updated files after potential compression
     files = elements.imageUpload.files;
+    
+    // Store current container height to prevent layout jumps
+    const currentHeight = elements.previewImages.clientHeight;
+    if (currentHeight > 0) {
+      elements.previewImages.style.minHeight = `${currentHeight}px`;
+    }
+    
+    // Don't immediately clear the preview container, fade it out first
+    const existingImages = elements.previewImages.querySelectorAll('.image-wrapper');
+    if (existingImages.length > 0) {
+      // Fade out existing images
+      existingImages.forEach(img => {
+        img.style.opacity = '0';
+        img.style.transform = 'scale(0.9)';
+      });
+      
+      // Wait for fade out animation to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    // Now clear the container
     elements.previewImages.innerHTML = "";
 
     if (files.length > 0) {
+      // Make sure the container is visible before adding new images
       elements.previewImages.style.display = "flex";
+      elements.previewImages.classList.remove('empty-container');
+      
+      // After adding new images, remove the fixed height
+      setTimeout(() => {
+        elements.previewImages.style.minHeight = '';
+      }, 500);
+      
       Array.from(files).forEach((file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -1084,17 +1141,52 @@ async function handleMultipleImageFiles(files) {
             // Animation for removal
             imgWrapper.style.opacity = '0';
             imgWrapper.style.transform = 'scale(0.9)';
+            
+            // Get the height of the element about to be removed
+            const removedHeight = imgWrapper.offsetHeight;
+            const removedWidth = imgWrapper.offsetWidth;
+            
+            // Add a placeholder to maintain the layout temporarily
+            const placeholder = document.createElement('div');
+            placeholder.style.width = `${removedWidth}px`;
+            placeholder.style.height = `${removedHeight}px`;
+            placeholder.style.opacity = '0';
+            placeholder.style.transition = 'all 0.3s ease';
+            placeholder.style.transform = 'scale(0.9)';
+            
+            // Replace the image with the placeholder
+            imgWrapper.parentNode.replaceChild(placeholder, imgWrapper);
+            
+            // Start collapsing the placeholder
             setTimeout(() => {
-              imgWrapper.remove();
-              const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
-              const dataTransfer = new DataTransfer();
-              updatedFiles.forEach((f) => dataTransfer.items.add(f));
-              elements.imageUpload.files = dataTransfer.files;
+              placeholder.style.width = '0';
+              placeholder.style.height = '0';
+              placeholder.style.margin = '0';
+              placeholder.style.padding = '0';
               
-              if (updatedFiles.length === 0) {
-                elements.previewImages.style.display = "none";
-              }
-              updateUploadInfo();
+              // Wait for the collapse animation to finish
+              setTimeout(() => {
+                placeholder.remove();
+                
+                // Update the files
+                const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
+                const dataTransfer = new DataTransfer();
+                updatedFiles.forEach((f) => dataTransfer.items.add(f));
+                elements.imageUpload.files = dataTransfer.files;
+                
+                if (updatedFiles.length === 0) {
+                  // Start fade out animation for the container
+                  elements.previewImages.style.minHeight = '0';
+                  elements.previewImages.classList.add('empty-container');
+                  
+                  // After animation completes, hide the container
+                  setTimeout(() => {
+                    elements.previewImages.style.display = "none";
+                  }, 300);
+                }
+                
+                updateUploadInfo();
+              }, 300);
             }, 300);
           });
           
@@ -1128,7 +1220,14 @@ async function handleMultipleImageFiles(files) {
         reader.readAsDataURL(file);
       });
     } else {
-      elements.previewImages.style.display = "none";
+      // Start fade out animation for the container
+      elements.previewImages.style.minHeight = '0';
+      elements.previewImages.classList.add('empty-container');
+      
+      // After animation completes, hide the container
+      setTimeout(() => {
+        elements.previewImages.style.display = "none";
+      }, 300);
     }
     updateUploadInfo();
 }
@@ -1606,10 +1705,30 @@ function initializeEventListeners() {
 
   // Add clear all images button handler
   document.getElementById("clear-all-images").addEventListener("click", () => {
-    elements.imageUpload.value = "";
-    elements.previewImages.innerHTML = "";
-    elements.previewImages.style.display = "none";
-    updateUploadInfo();
+    // Get all image wrappers
+    const imageWrappers = elements.previewImages.querySelectorAll('.image-wrapper');
+    
+    // First fade out all images
+    imageWrappers.forEach((wrapper, index) => {
+      setTimeout(() => {
+        wrapper.style.opacity = '0';
+        wrapper.style.transform = 'scale(0.9)';
+      }, index * 50); // Staggered animation
+    });
+    
+    // Start container collapse animation
+    setTimeout(() => {
+      elements.previewImages.style.minHeight = '0';
+      elements.previewImages.classList.add('empty-container');
+      
+      // After animations complete, clear everything
+      setTimeout(() => {
+        elements.imageUpload.value = "";
+        elements.previewImages.innerHTML = "";
+        elements.previewImages.style.display = "none";
+        updateUploadInfo();
+      }, 300);
+    }, imageWrappers.length * 50 + 100);
   });
 
   // Add Backspace functionality to remove images
@@ -1636,14 +1755,20 @@ function initializeEventListeners() {
             }, index * 50); // Stagger the animation
           });
           
-          // Wait for animations to complete before clearing
+          // Start container collapse animation
           setTimeout(() => {
-            elements.imageUpload.value = "";
-            elements.previewImages.innerHTML = "";
-            elements.previewImages.style.display = "none";
-            updateUploadInfo();
-            showToast("all images cleared");
-          }, imageWrappers.length * 50 + 300);
+            elements.previewImages.style.minHeight = '0';
+            elements.previewImages.classList.add('empty-container');
+            
+            // After animations complete, clear everything
+            setTimeout(() => {
+              elements.imageUpload.value = "";
+              elements.previewImages.innerHTML = "";
+              elements.previewImages.style.display = "none";
+              updateUploadInfo();
+              showToast("all images cleared");
+            }, 300);
+          }, imageWrappers.length * 50 + 100);
           
           // Remove the clear all indicator
           if (clearAllVisualFeedback) {
@@ -1669,7 +1794,7 @@ function initializeEventListeners() {
         clearAllVisualFeedback.style.display = 'flex';
         clearAllVisualFeedback.style.alignItems = 'center';
         clearAllVisualFeedback.innerHTML = `
-          <div style="margin-right: 10px;">Keep holding to clear all images</div>
+          <div style="margin-right: 10px;">keep holding to clear all images</div>
           <div class="progress-bar" style="background: rgba(255,255,255,0.3); width: 100px; height: 6px; border-radius: 3px; overflow: hidden;">
             <div class="progress-fill" style="background: #fff; width: 0%; height: 100%; transition: width 1s linear;"></div>
           </div>
@@ -1720,21 +1845,52 @@ function initializeEventListeners() {
           lastImageWrapper.style.opacity = '0';
           lastImageWrapper.style.transform = 'scale(0.9)';
           
+          // Get the height of the element about to be removed
+          const removedHeight = lastImageWrapper.offsetHeight;
+          const removedWidth = lastImageWrapper.offsetWidth;
+          
+          // Add a placeholder to maintain the layout temporarily
+          const placeholder = document.createElement('div');
+          placeholder.style.width = `${removedWidth}px`;
+          placeholder.style.height = `${removedHeight}px`;
+          placeholder.style.opacity = '0';
+          placeholder.style.transition = 'all 0.3s ease';
+          placeholder.style.transform = 'scale(0.9)';
+          
+          // Replace the image with the placeholder
+          lastImageWrapper.parentNode.replaceChild(placeholder, lastImageWrapper);
+          
+          // Start collapsing the placeholder
           setTimeout(() => {
-            lastImageWrapper.remove();
+            placeholder.style.width = '0';
+            placeholder.style.height = '0';
+            placeholder.style.margin = '0';
+            placeholder.style.padding = '0';
             
-            // Update the files in the input
-            const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
-            const dataTransfer = new DataTransfer();
-            updatedFiles.forEach((f) => dataTransfer.items.add(f));
-            elements.imageUpload.files = dataTransfer.files;
-            
-            if (updatedFiles.length === 0) {
-              elements.previewImages.style.display = "none";
-            }
-            
-            updateUploadInfo();
-            showToast("last image removed");
+            // Wait for the collapse animation to finish
+            setTimeout(() => {
+              placeholder.remove();
+              
+              // Update the files
+              const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
+              const dataTransfer = new DataTransfer();
+              updatedFiles.forEach((f) => dataTransfer.items.add(f));
+              elements.imageUpload.files = dataTransfer.files;
+              
+              if (updatedFiles.length === 0) {
+                // Start fade out animation for the container
+                elements.previewImages.style.minHeight = '0';
+                elements.previewImages.classList.add('empty-container');
+                
+                // After animation completes, hide the container
+                setTimeout(() => {
+                  elements.previewImages.style.display = "none";
+                }, 300);
+              }
+              
+              updateUploadInfo();
+              showToast("last image removed");
+            }, 300);
           }, 300);
         }
       }
