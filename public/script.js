@@ -39,8 +39,20 @@ function showToast(message) {
   toast.style.padding = '10px 20px';
   toast.style.borderRadius = '5px';
   toast.style.zIndex = '10000';
+  
+  // Add animation classes
+  toast.style.opacity = '0';
+  toast.style.transition = 'opacity 0.3s ease-in-out';
+  
   document.body.appendChild(toast);
-  setTimeout(() => { toast.remove(); }, 3000);
+  
+  // Trigger animation
+  setTimeout(() => { toast.style.opacity = '1'; }, 10);
+  
+  setTimeout(() => { 
+    toast.style.opacity = '0';
+    setTimeout(() => { toast.remove(); }, 300);
+  }, 3000);
 }
 
 // Image validation
@@ -1036,6 +1048,11 @@ async function handleMultipleImageFiles(files) {
           const imgWrapper = document.createElement("div");
           imgWrapper.classList.add("image-wrapper");
           
+          // Add animation class
+          imgWrapper.style.opacity = '0';
+          imgWrapper.style.transform = 'scale(0.9)';
+          imgWrapper.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          
           const img = document.createElement("img");
           img.src = e.target.result;
           img.alt = "Image Preview";
@@ -1045,20 +1062,40 @@ async function handleMultipleImageFiles(files) {
           img.addEventListener("click", () => {
             const modal = document.createElement("div");
             modal.classList.add("image-modal");
+            modal.style.opacity = '0';
+            modal.style.transition = 'opacity 0.3s ease';
+            
             modal.innerHTML = `<img src=\"${e.target.result}\" alt=\"Expanded preview\">`;
             document.body.appendChild(modal);
-            modal.addEventListener("click", () => modal.remove());
+            
+            // Trigger animation
+            setTimeout(() => { modal.style.opacity = '1'; }, 10);
+            
+            modal.addEventListener("click", () => {
+              modal.style.opacity = '0';
+              setTimeout(() => { modal.remove(); }, 300);
+            });
           });
           
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "×";
           removeBtn.classList.add("remove-image-btn");
           removeBtn.addEventListener("click", () => {
-            imgWrapper.remove();
-            const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
-            const dataTransfer = new DataTransfer();
-            updatedFiles.forEach((f) => dataTransfer.items.add(f));
-            elements.imageUpload.files = dataTransfer.files;
+            // Animation for removal
+            imgWrapper.style.opacity = '0';
+            imgWrapper.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+              imgWrapper.remove();
+              const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
+              const dataTransfer = new DataTransfer();
+              updatedFiles.forEach((f) => dataTransfer.items.add(f));
+              elements.imageUpload.files = dataTransfer.files;
+              
+              if (updatedFiles.length === 0) {
+                elements.previewImages.style.display = "none";
+              }
+              updateUploadInfo();
+            }, 300);
           });
           
           imgWrapper.appendChild(img);
@@ -1081,6 +1118,12 @@ async function handleMultipleImageFiles(files) {
           }
           
           elements.previewImages.appendChild(imgWrapper);
+          
+          // Trigger animation after append
+          setTimeout(() => { 
+            imgWrapper.style.opacity = '1'; 
+            imgWrapper.style.transform = 'scale(1)';
+          }, 10);
         };
         reader.readAsDataURL(file);
       });
@@ -1571,6 +1614,8 @@ function initializeEventListeners() {
 
   // Add Backspace functionality to remove images
   let backspaceTimer = null;
+  let clearAllVisualFeedback = null;
+  
   document.addEventListener("keydown", (e) => {
     if (e.key === "Backspace" && !isUserTyping()) {
       e.preventDefault();
@@ -1579,13 +1624,65 @@ function initializeEventListeners() {
       if (!backspaceTimer) {
         backspaceTimer = setTimeout(() => {
           // Clear all images when backspace is held for 1 second
-          elements.imageUpload.value = "";
-          elements.previewImages.innerHTML = "";
-          elements.previewImages.style.display = "none";
-          updateUploadInfo();
-          showToast("all images cleared");
+          const imageWrappers = elements.previewImages.querySelectorAll('.image-wrapper');
+          
+          // Animate all images fading out
+          imageWrappers.forEach((wrapper, index) => {
+            setTimeout(() => {
+              wrapper.style.opacity = '0';
+              wrapper.style.transform = 'scale(0.9)';
+            }, index * 50); // Stagger the animation
+          });
+          
+          // Wait for animations to complete before clearing
+          setTimeout(() => {
+            elements.imageUpload.value = "";
+            elements.previewImages.innerHTML = "";
+            elements.previewImages.style.display = "none";
+            updateUploadInfo();
+            showToast("all images cleared");
+          }, imageWrappers.length * 50 + 300);
+          
+          // Remove the clear all indicator
+          if (clearAllVisualFeedback) {
+            clearAllVisualFeedback.remove();
+            clearAllVisualFeedback = null;
+          }
+          
           backspaceTimer = null;
         }, 1000);
+        
+        // Create visual feedback for holding backspace
+        clearAllVisualFeedback = document.createElement('div');
+        clearAllVisualFeedback.className = 'clear-all-indicator';
+        clearAllVisualFeedback.style.position = 'fixed';
+        clearAllVisualFeedback.style.bottom = '60px';
+        clearAllVisualFeedback.style.left = '50%';
+        clearAllVisualFeedback.style.transform = 'translateX(-50%)';
+        clearAllVisualFeedback.style.backgroundColor = 'rgba(255, 59, 48, 0.7)';
+        clearAllVisualFeedback.style.color = '#fff';
+        clearAllVisualFeedback.style.padding = '8px 16px';
+        clearAllVisualFeedback.style.borderRadius = '5px';
+        clearAllVisualFeedback.style.zIndex = '10000';
+        clearAllVisualFeedback.style.display = 'flex';
+        clearAllVisualFeedback.style.alignItems = 'center';
+        clearAllVisualFeedback.innerHTML = `
+          <div style="margin-right: 10px;">Keep holding to clear all images</div>
+          <div class="progress-bar" style="background: rgba(255,255,255,0.3); width: 100px; height: 6px; border-radius: 3px; overflow: hidden;">
+            <div class="progress-fill" style="background: #fff; width: 0%; height: 100%; transition: width 1s linear;"></div>
+          </div>
+        `;
+        document.body.appendChild(clearAllVisualFeedback);
+        
+        // Animate the progress bar
+        setTimeout(() => {
+          if (clearAllVisualFeedback) {
+            const progressFill = clearAllVisualFeedback.querySelector('.progress-fill');
+            if (progressFill) {
+              progressFill.style.width = '100%';
+            }
+          }
+        }, 10);
       }
     }
   });
@@ -1597,24 +1694,44 @@ function initializeEventListeners() {
         clearTimeout(backspaceTimer);
         backspaceTimer = null;
         
+        // Remove the clear all visual feedback
+        if (clearAllVisualFeedback) {
+          clearAllVisualFeedback.style.opacity = '0';
+          clearAllVisualFeedback.style.transform = 'translateX(-50%) translateY(10px)';
+          clearAllVisualFeedback.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+          setTimeout(() => {
+            if (clearAllVisualFeedback) {
+              clearAllVisualFeedback.remove();
+              clearAllVisualFeedback = null;
+            }
+          }, 300);
+        }
+        
         // Remove only the last image if there are any
         const imageWrappers = elements.previewImages.querySelectorAll('.image-wrapper');
         if (imageWrappers.length > 0) {
           const lastImageWrapper = imageWrappers[imageWrappers.length - 1];
-          lastImageWrapper.remove();
           
-          // Update the files in the input
-          const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
-          const dataTransfer = new DataTransfer();
-          updatedFiles.forEach((f) => dataTransfer.items.add(f));
-          elements.imageUpload.files = dataTransfer.files;
+          // Animate removal
+          lastImageWrapper.style.opacity = '0';
+          lastImageWrapper.style.transform = 'scale(0.9)';
           
-          if (updatedFiles.length === 0) {
-            elements.previewImages.style.display = "none";
-          }
-          
-          updateUploadInfo();
-          showToast("last image removed");
+          setTimeout(() => {
+            lastImageWrapper.remove();
+            
+            // Update the files in the input
+            const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
+            const dataTransfer = new DataTransfer();
+            updatedFiles.forEach((f) => dataTransfer.items.add(f));
+            elements.imageUpload.files = dataTransfer.files;
+            
+            if (updatedFiles.length === 0) {
+              elements.previewImages.style.display = "none";
+            }
+            
+            updateUploadInfo();
+            showToast("last image removed");
+          }, 300);
         }
       }
     }
