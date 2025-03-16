@@ -1545,7 +1545,69 @@ function initializeEventListeners() {
     elements.imageUpload.value = "";
     elements.previewImages.innerHTML = "";
     elements.previewImages.style.display = "none";
+    updateUploadInfo();
   });
+
+  // Add Backspace functionality to remove images
+  let backspaceTimer = null;
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Backspace" && !isUserTyping()) {
+      e.preventDefault();
+      
+      // Start timer for holding backspace
+      if (!backspaceTimer) {
+        backspaceTimer = setTimeout(() => {
+          // Clear all images when backspace is held for 1 second
+          elements.imageUpload.value = "";
+          elements.previewImages.innerHTML = "";
+          elements.previewImages.style.display = "none";
+          updateUploadInfo();
+          showToast("All images cleared");
+          backspaceTimer = null;
+        }, 1000);
+      }
+    }
+  });
+
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "Backspace") {
+      // If timer exists and backspace was released before the timeout
+      if (backspaceTimer) {
+        clearTimeout(backspaceTimer);
+        backspaceTimer = null;
+        
+        // Remove only the last image if there are any
+        const imageWrappers = elements.previewImages.querySelectorAll('.image-wrapper');
+        if (imageWrappers.length > 0) {
+          const lastImageWrapper = imageWrappers[imageWrappers.length - 1];
+          lastImageWrapper.remove();
+          
+          // Update the files in the input
+          const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
+          const dataTransfer = new DataTransfer();
+          updatedFiles.forEach((f) => dataTransfer.items.add(f));
+          elements.imageUpload.files = dataTransfer.files;
+          
+          if (updatedFiles.length === 0) {
+            elements.previewImages.style.display = "none";
+          }
+          
+          updateUploadInfo();
+          showToast("last image removed");
+        }
+      }
+    }
+  });
+}
+
+// Helper function to determine if user is typing in an input field
+function isUserTyping() {
+  const activeElement = document.activeElement;
+  return activeElement && (
+    activeElement.tagName === 'INPUT' || 
+    activeElement.tagName === 'TEXTAREA' || 
+    activeElement.contentEditable === 'true'
+  );
 }
 
 // Initialize
