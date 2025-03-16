@@ -1016,6 +1016,9 @@ document.addEventListener("paste", async (event) => {
   // Update the input's files
   elements.imageUpload.files = dataTransfer.files;
   handleMultipleImageFiles(Array.from(dataTransfer.files));
+  
+  // Show toast notification for clipboard image upload
+  showToast("clipboard image uploaded");
 });
 
 // Enhanced image preview handling
@@ -1499,9 +1502,11 @@ function initializeEventListeners() {
     
     // Add the new dropped files
     const files = e.dataTransfer.files;
+    let validFilesCount = 0;
     Array.from(files).forEach(file => {
       if (validateImage(file)) {
         dataTransfer.items.add(file);
+        validFilesCount++;
       }
     });
     
@@ -1509,6 +1514,13 @@ function initializeEventListeners() {
     elements.imageUpload.files = dataTransfer.files;
     
     handleMultipleImageFiles(dataTransfer.files);
+    
+    // Show toast notification for dropped images
+    if (validFilesCount === 1) {
+      showToast("1 image uploaded");
+    } else if (validFilesCount > 1) {
+      showToast(`${validFilesCount} images uploaded`);
+    }
   });
 
   elements.submitBtn.addEventListener("click", () => handleSubmit(false));
@@ -1518,6 +1530,13 @@ function initializeEventListeners() {
   elements.imageUpload.addEventListener("change", (e) => {
     const files = e.target.files;
     handleMultipleImageFiles(files);
+    
+    // Show toast notification for file selection
+    if (files.length === 1) {
+      showToast("1 image uploaded");
+    } else if (files.length > 1) {
+      showToast(`${files.length} images uploaded`);
+    }
   });
 
   // Add event listener for "Choose Files" button
@@ -1533,8 +1552,10 @@ function initializeEventListeners() {
       e.preventDefault();
       // If the active element is the followup prompt, treat it as a followup submission; otherwise, use the main prompt
       if (document.activeElement && document.activeElement.id === "followup-prompt") {
+        showToast("processing request...");
         handleSubmit(true);
       } else {
+        showToast("processing request...");
         handleSubmit(false);
       }
     }
