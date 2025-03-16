@@ -1583,7 +1583,7 @@ function initializeEventListeners() {
           elements.previewImages.innerHTML = "";
           elements.previewImages.style.display = "none";
           updateUploadInfo();
-          showToast("All images cleared");
+          showToast("all images cleared");
           backspaceTimer = null;
         }, 1000);
       }
