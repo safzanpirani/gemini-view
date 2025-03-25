@@ -1430,159 +1430,212 @@ function factoryReset() {
 
 // Enhanced submit handling
 async function handleSubmit(isFollowup = false) {
-  const button = isFollowup ? elements.followupBtn : elements.submitBtn;
-  const prompt = isFollowup ? elements.followupPrompt.value : elements.systemPrompt.value;
-
-  if (!isFollowup && elements.imageUpload.files.length === 0) {
-    showError('please upload at least one image', elements.imageUpload);
-    return;
-  }
-
-  if (!prompt.trim()) {
-    showError('please enter a prompt', isFollowup ? elements.followupPrompt : elements.systemPrompt);
-    return;
-  }
-
-  let timeInterval;
-  try {
-    isLoading = true;
-    button.disabled = true;
-    document.body.style.cursor = 'wait';
-
-    const startTime = performance.now();
-    button.innerHTML = `
-      <div class="loading-state">
-        <div class="loading-spinner"></div>
-        <span>processing... (0s)</span>
-      </div>
-    `;
-
-    // Update processing time
-    timeInterval = setInterval(() => {
-      const seconds = Math.round((performance.now() - startTime) / 1000);
-      button.innerHTML = `
-        <div class="loading-state">
-          <div class="loading-spinner"></div>
-          <span>processing... (${seconds}s)</span>
-        </div>
-      `;
-    }, 1000);
-
-    let payload;
-    if (isFollowup) {
-      const previousResponse = elements.responseContent.textContent;
-      const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
-      
-      payload = {
-        contents: {
-          role: "user",
-          parts: [{ text: elements.systemPrompt.value + "\n\n" + followupPrompt }],
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          temperature: parseFloat(elements.temperatureInput.value),
-        },
-      };
-    } else {
-      const files = Array.from(elements.imageUpload.files);
-      if (files.length === 0) {
-        showError('please upload at least one image', elements.imageUpload);
+    // Get the button that was clicked
+    const submitButton = isFollowup ? document.getElementById('followup-btn') : document.getElementById('submit-btn');
+    const originalButtonText = submitButton.innerHTML;
+    
+    // Show loading state
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<div class="loading-spinner"></div> Processing...';
+    
+    // Get prompt
+    const promptText = isFollowup 
+        ? document.getElementById('followup-prompt').value 
+        : document.getElementById('system-prompt').value;
+    
+    // Validate prompt
+    if (!promptText.trim()) {
+        showError('Please enter a prompt', isFollowup ? document.querySelector('.followup-section') : document.querySelector('.prompt-section'));
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
         return;
-      }
-
-      // Convert all files to base64
-      const base64Images = await Promise.all(
-        files.map((file) => fileToBase64(file)),
-      );
-
-      const inlineDataArray = base64Images.map((base64Image, index) => ({
-        inlineData: {
-          mimeType: files[index].type,
-          data: base64Image.split(",")[1],
-        },
-      }));
-
-      payload = {
-        contents: [
-          {
-            parts: [{ text: prompt }, ...inlineDataArray],
-          },
-        ],
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          temperature: parseFloat(elements.temperatureInput.value),
-        },
-      };
     }
+    
+    // Check which mode is active
+    const isVoiceMode = document.getElementById('voice-mode').classList.contains('active');
+    
+    // Check if we have the appropriate content for the active mode
+    if (isVoiceMode && !audioFile) {
+        showError('Please record or upload an audio file', document.querySelector('.voice-section'));
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+        return;
+    }
+    
+    if (!isVoiceMode && uploadedImages.length === 0) {
+        showError('Please upload at least one image', document.querySelector('.upload-section'));
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+        return;
+    }
+    
+    try {
+        // Get the temperature value
+        const temperature = parseFloat(document.getElementById('temperature').value);
+        
+        // Prepare the payload based on which mode is active
+        let payload;
+        if (isVoiceMode) {
+            payload = await preparePayloadWithAudio(promptText, audioFile, temperature, isFollowup);
+        } else {
+            payload = await preparePayloadWithImages(promptText, uploadedImages, temperature, isFollowup);
+        }
+        
+        // Make the API call
+        const response = await makeApiCall(payload);
+        
+        // Handle response
+        if (response) {
+            // Update UI with response
+            handleNewAssistantResponse(response);
+            
+            // Display response section if not already visible
+            const responseSection = document.querySelector('.response-section');
+            if (!responseSection.classList.contains('visible')) {
+                responseSection.classList.add('visible');
+            }
+            
+            // Show the followup section
+            const followupSection = document.querySelector('.followup-section');
+            followupSection.style.display = 'block';
+            
+            // Add history entry
+            let imagesHTML = '';
+            if (!isVoiceMode) {
+                // Save images to history if in image mode
+                imagesHTML = uploadedImages.map(img => {
+                    return `<img src="${URL.createObjectURL(img)}" alt="User uploaded image" width="100">`;
+                }).join('');
+            } else {
+                // Add a voice icon to history if in voice mode
+                imagesHTML = '<div class="history-audio-icon"><i class="fas fa-microphone"></i> Audio input</div>';
+            }
+            
+            addHistoryEntry(promptText, imagesHTML, response);
+            
+            // Add copy button to response
+            addCopyButton();
+        }
+    } catch (error) {
+        console.error('Error in handleSubmit:', error);
+        
+        // Show error to user
+        showError(`Error: ${error.message || 'Something went wrong. Please try again.'}`, 
+                 isFollowup ? document.querySelector('.followup-section') : document.querySelector('.prompt-section'));
+    } finally {
+        // Reset button
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalButtonText;
+    }
+}
 
-    console.log("Sending payload:", JSON.stringify(payload, null, 2));
-    const data = await makeApiCall(payload);
-    console.log("API response:", data);
-
-    if (data.candidates && data.candidates.length > 0) {
-      const rawResponse = data.candidates[0].content.parts[0].text;
-      // Sanitize and format the response
-      const sanitizedResponse = DOMPurify.sanitize(rawResponse);
-      const formattedResponse = marked.parse(sanitizedResponse);
-
-      elements.responseContent.innerHTML = formattedResponse;
-      elements.responseContent.closest('.response-section').classList.add('visible');
-      
-      // Store the response in conversation history
-      handleNewAssistantResponse(rawResponse);
-      
-      // Add history entry: record current prompt, preview images HTML, and raw response
-      addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
+// Separate payload preparation functions for clarity
+async function preparePayloadWithImages(prompt, images, temperature = 1.0, isFollowup = false) {
+    // Compress images if needed
+    const compressedImages = await compressImagesIfNeeded(images);
+    
+    // Convert all images to base64
+    const base64Images = await Promise.all(compressedImages.map(img => fileToBase64(img)));
+    
+    // Create payload structure
+    const payload = {
+        contents: [],
+        generation_config: {
+            temperature: temperature
+        }
+    };
+    
+    if (isFollowup) {
+        // For followups, add the existing conversation
+        payload.contents = [...currentConversation];
+        
+        // Add the followup message with images
+        const userMessage = {
+            role: "user",
+            parts: [
+                { text: prompt },
+                ...base64Images.map(base64 => ({
+                    inline_data: {
+                        mime_type: "image/jpeg",
+                        data: base64
+                    }
+                }))
+            ]
+        };
+        
+        payload.contents.push(userMessage);
     } else {
-      throw new Error("no candidates in api response");
+        // For new conversations, start fresh
+        const userMessage = {
+            role: "user",
+            parts: [
+                { text: prompt },
+                ...base64Images.map(base64 => ({
+                    inline_data: {
+                        mime_type: "image/jpeg",
+                        data: base64
+                    }
+                }))
+            ]
+        };
+        
+        payload.contents.push(userMessage);
     }
-  } catch (error) {
-    console.error("detailed error:", error);
-    showError(error.message || 'an error occurred while processing your request', button);
-  } finally {
-    if (timeInterval) {
-      clearInterval(timeInterval);
+    
+    return payload;
+}
+
+// Function to prepare payload with audio
+async function preparePayloadWithAudio(prompt, audioFile, temperature = 1.0, isFollowup = false) {
+    // Convert audio to base64
+    const audioBase64 = await audioToBase64(audioFile);
+    
+    // Create payload structure
+    const payload = {
+        contents: [],
+        generation_config: {
+            temperature: temperature
+        }
+    };
+    
+    if (isFollowup) {
+        // For followups, add the existing conversation
+        payload.contents = [...currentConversation];
+        
+        // Add the followup message with audio
+        const userMessage = {
+            role: "user",
+            parts: [
+                { text: prompt },
+                {
+                    inline_data: {
+                        mime_type: audioFile.type,
+                        data: audioBase64
+                    }
+                }
+            ]
+        };
+        
+        payload.contents.push(userMessage);
+    } else {
+        // For new conversations, start fresh
+        const userMessage = {
+            role: "user",
+            parts: [
+                { text: prompt },
+                {
+                    inline_data: {
+                        mime_type: audioFile.type,
+                        data: audioBase64
+                    }
+                }
+            ]
+        };
+        
+        payload.contents.push(userMessage);
     }
-    isLoading = false;
-    button.disabled = false;
-    document.body.style.cursor = 'default';
-    button.innerHTML = isFollowup ? "send follow-up" : "get response";
-    if (isFollowup) elements.followupPrompt.value = "";
-  }
+    
+    return payload;
 }
 
 // Add copy functionality
@@ -1896,6 +1949,12 @@ function initializeEventListeners() {
       }
     }
   });
+
+  // Initialize voice recording features
+  initVoiceRecording();
+
+  // Initialize mode toggle
+  initModeToggle();
 }
 
 // Helper function to determine if user is typing in an input field
@@ -2150,3 +2209,227 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Voice recording variables
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+let audioBlob = null;
+let audioFile = null;
+
+// Voice recording functions
+function initVoiceRecording() {
+    const recordButton = document.getElementById('record-voice');
+    const stopButton = document.getElementById('stop-voice');
+    const recordingStatus = document.getElementById('recording-status');
+    const audioUpload = document.getElementById('audio-upload');
+    const audioPreview = document.getElementById('audio-preview');
+    const audioDragDropArea = document.querySelector('.audio-drop-area');
+
+    // Check if browser supports MediaRecorder
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+        recordButton.disabled = true;
+        recordButton.title = 'Voice recording not supported in your browser';
+        showError('Your browser does not support voice recording. Try using Chrome or Firefox.', recordButton.parentElement);
+        return;
+    }
+
+    // Record button click handler
+    recordButton.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            startRecording(stream);
+            recordButton.disabled = true;
+            stopButton.disabled = false;
+            
+            // Show recording indicator
+            recordingStatus.innerHTML = '<span class="recording-indicator"></span> Recording...';
+            isRecording = true;
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            showError('Could not access your microphone. Please check permissions.', recordButton.parentElement);
+        }
+    });
+
+    // Stop button click handler
+    stopButton.addEventListener('click', () => {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            isRecording = false;
+            recordButton.disabled = false;
+            stopButton.disabled = true;
+            recordingStatus.textContent = 'Recording stopped';
+        }
+    });
+
+    // Audio file upload handler
+    audioUpload.addEventListener('change', (event) => {
+        handleAudioUpload(event.target.files);
+    });
+    
+    // Click on the drag & drop area should trigger file input
+    audioDragDropArea.addEventListener('click', () => {
+        audioUpload.click();
+    });
+    
+    // Set up drag and drop for audio
+    audioDragDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        audioDragDropArea.classList.add('dragover');
+    });
+    
+    audioDragDropArea.addEventListener('dragleave', () => {
+        audioDragDropArea.classList.remove('dragover');
+    });
+    
+    audioDragDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        audioDragDropArea.classList.remove('dragover');
+        
+        if (e.dataTransfer.files.length > 0) {
+            handleAudioUpload(e.dataTransfer.files);
+        }
+    });
+
+    // Function to start recording
+    function startRecording(stream) {
+        audioChunks = [];
+        
+        // Set up the MediaRecorder with audio settings
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm', // Most compatible format
+        });
+
+        // Collect audio chunks as they become available
+        mediaRecorder.addEventListener('dataavailable', (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        });
+
+        // Process the recording when it's stopped
+        mediaRecorder.addEventListener('stop', () => {
+            // Release microphone
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Create audio blob from chunks
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            
+            // Convert to File object for API compatibility
+            audioFile = new File([audioBlob], 'recording.webm', { 
+                type: 'audio/webm',
+                lastModified: new Date().getTime()
+            });
+            
+            // Display the recorded audio
+            displayAudioPreview(audioFile);
+        });
+
+        // Start recording
+        mediaRecorder.start();
+    }
+
+    // Display audio preview
+    function displayAudioPreview(file) {
+        // Clear previous previews
+        audioPreview.innerHTML = '';
+        
+        const audioItem = document.createElement('div');
+        audioItem.className = 'audio-item';
+        
+        // Create audio element
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        
+        // Create URL for the audio file
+        const audioURL = URL.createObjectURL(file);
+        audio.src = audioURL;
+        
+        // Add remove button
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-audio-btn';
+        removeButton.innerHTML = '<i class="fas fa-times"></i>';
+        removeButton.title = 'Remove audio';
+        removeButton.addEventListener('click', () => {
+            audioPreview.innerHTML = '';
+            audioFile = null;
+            audioBlob = null;
+        });
+        
+        // Add elements to container
+        audioItem.appendChild(audio);
+        audioItem.appendChild(removeButton);
+        audioPreview.appendChild(audioItem);
+    }
+
+    // Handle audio file upload
+    function handleAudioUpload(files) {
+        if (!files || files.length === 0) return;
+        
+        const file = files[0];
+        
+        // Validate audio file
+        if (!file.type.startsWith('audio/')) {
+            showError('Please select a valid audio file', audioUpload.parentElement);
+            return;
+        }
+        
+        // Store the file for submission
+        audioFile = file;
+        audioBlob = null;
+        
+        // Display audio preview
+        displayAudioPreview(file);
+    }
+}
+
+// Convert audio file to base64
+function audioToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            // Extract the base64 data (remove data:audio/xxx;base64, prefix)
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
+// Mode toggle function
+function initModeToggle() {
+    const imageMode = document.getElementById('image-mode');
+    const voiceMode = document.getElementById('voice-mode');
+    const imageSection = document.getElementById('image-section');
+    const voiceSection = document.getElementById('voice-section');
+    
+    // Toggle to image mode
+    imageMode.addEventListener('click', () => {
+        // Update button states
+        imageMode.classList.add('active');
+        voiceMode.classList.remove('active');
+        
+        // Show/hide sections
+        imageSection.style.display = 'block';
+        voiceSection.style.display = 'none';
+        
+        // Clear audio file when switching to image mode
+        if (audioFile) {
+            document.getElementById('audio-preview').innerHTML = '';
+            audioFile = null;
+            audioBlob = null;
+        }
+    });
+    
+    // Toggle to voice mode
+    voiceMode.addEventListener('click', () => {
+        // Update button states
+        voiceMode.classList.add('active');
+        imageMode.classList.remove('active');
+        
+        // Show/hide sections
+        imageSection.style.display = 'none';
+        voiceSection.style.display = 'block';
+    });
+}

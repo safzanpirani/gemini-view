@@ -36,7 +36,18 @@
                     </button>
                 </div>
             </div>
-            <div class="upload-section">
+            <div class="mode-toggle-section">
+                <h3>input mode</h3>
+                <div class="mode-toggle">
+                    <button id="image-mode" class="mode-toggle-btn active">
+                        <i class="fas fa-image"></i> Image
+                    </button>
+                    <button id="voice-mode" class="mode-toggle-btn">
+                        <i class="fas fa-microphone"></i> Voice
+                    </button>
+                </div>
+            </div>
+            <div class="upload-section" id="image-section">
                 <label for="image-upload">upload image(s):</label>
                 <div class="file-input-wrapper">
                     <input
@@ -73,6 +84,35 @@
                     <span id="image-count">no images uploaded</span>
                     <span id="total-size">0 kb total</span>
                 </div>
+            </div>
+            <div class="voice-section" id="voice-section">
+                <div class="voice-section-header">
+                    <h3>voice input</h3>
+                </div>
+                <div class="voice-controls">
+                    <button id="record-voice" class="voice-control-btn">
+                        <i class="fas fa-microphone"></i> record voice
+                    </button>
+                    <button id="stop-voice" class="voice-control-btn" disabled>
+                        <i class="fas fa-stop"></i> stop recording
+                    </button>
+                    <span id="recording-status"></span>
+                </div>
+                <div class="audio-upload">
+                    <label for="audio-upload">or upload audio file:</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="audio-upload" accept="audio/*" class="file-input">
+                        <div class="drag-drop-area audio-drop-area" role="button" tabindex="0" aria-label="Drag and drop area for audio files">
+                            <i class="fas fa-music fa-2x"></i>
+                            <span class="drag-drop-text">drag & drop audio here</span>
+                            <span class="or-text">or</span>
+                            <button type="button" class="file-input-button">
+                                choose audio file
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div id="audio-preview" class="audio-preview"></div>
             </div>
             <div class="prompt-section">
                 <label for="system-prompt">system prompt:</label>
@@ -112,6 +152,10 @@
             </div>
             <div class="temperature-section">
                 <label for="temperature">temperature</label>
+                <div class="temperature-tooltip">
+                    <i class="fas fa-info-circle"></i>
+                    <span class="tooltip-text">Controls the randomness of responses. Lower values are more focused and deterministic, higher values are more creative.</span>
+                </div>
                 <input
                     type="range"
                     id="temperature"
@@ -123,9 +167,9 @@
                 />
                 <span id="temperature-value" aria-live="polite">1</span>
                 <div class="temperature-markers">
-                    <span>0</span>
-                    <span>1</span>
-                    <span>2</span>
+                    <span class="temp-label">0<br><small>Precise</small></span>
+                    <span class="temp-label">1<br><small>Balanced</small></span>
+                    <span class="temp-label">2<br><small>Creative</small></span>
                 </div>
             </div>
         </div>
