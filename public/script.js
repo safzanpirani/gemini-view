@@ -1141,6 +1141,14 @@ async function handleMultipleImageFiles(files) {
             // Animation for removal
             imgWrapper.style.opacity = '0';
             imgWrapper.style.transform = 'scale(0.9)';
+
+            // --- START EDIT: Update file list immediately ---
+            const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
+            const dataTransfer = new DataTransfer();
+            updatedFiles.forEach((f) => dataTransfer.items.add(f));
+            elements.imageUpload.files = dataTransfer.files;
+            updateUploadInfo(); // Update info display immediately
+            // --- END EDIT ---
             
             // Get the height of the element about to be removed
             const removedHeight = imgWrapper.offsetHeight;
@@ -1168,13 +1176,15 @@ async function handleMultipleImageFiles(files) {
               setTimeout(() => {
                 placeholder.remove();
                 
+                // --- START EDIT: Remove redundant file list update ---
                 // Update the files
-                const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file);
-                const dataTransfer = new DataTransfer();
-                updatedFiles.forEach((f) => dataTransfer.items.add(f));
-                elements.imageUpload.files = dataTransfer.files;
+                // const updatedFiles = Array.from(elements.imageUpload.files).filter((f) => f !== file); // Already updated
+                // const dataTransfer = new DataTransfer();
+                // updatedFiles.forEach((f) => dataTransfer.items.add(f));
+                // elements.imageUpload.files = dataTransfer.files;
                 
-                if (updatedFiles.length === 0) {
+                if (updatedFiles.length === 0) { // Check the already updated list
+                // --- END EDIT ---
                   // Start fade out animation for the container
                   elements.previewImages.style.minHeight = '0';
                   elements.previewImages.classList.add('empty-container');
@@ -1185,7 +1195,7 @@ async function handleMultipleImageFiles(files) {
                   }, 300);
                 }
                 
-                updateUploadInfo();
+                // updateUploadInfo(); // Already updated
               }, 300);
             }, 300);
           });
@@ -1841,6 +1851,15 @@ function initializeEventListeners() {
         if (imageWrappers.length > 0) {
           const lastImageWrapper = imageWrappers[imageWrappers.length - 1];
           
+          // --- START EDIT: Update file list immediately ---
+          const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
+          const dataTransfer = new DataTransfer();
+          updatedFiles.forEach((f) => dataTransfer.items.add(f));
+          elements.imageUpload.files = dataTransfer.files;
+          updateUploadInfo(); // Update info display immediately
+          showToast("last image removed");
+          // --- END EDIT ---
+
           // Animate removal
           lastImageWrapper.style.opacity = '0';
           lastImageWrapper.style.transform = 'scale(0.9)';
@@ -1871,13 +1890,14 @@ function initializeEventListeners() {
             setTimeout(() => {
               placeholder.remove();
               
-              // Update the files
-              const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
-              const dataTransfer = new DataTransfer();
-              updatedFiles.forEach((f) => dataTransfer.items.add(f));
-              elements.imageUpload.files = dataTransfer.files;
+              // --- START EDIT: Remove redundant file list update ---
+              // const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1); // Already updated
+              // const dataTransfer = new DataTransfer();
+              // updatedFiles.forEach((f) => dataTransfer.items.add(f));
+              // elements.imageUpload.files = dataTransfer.files;
               
-              if (updatedFiles.length === 0) {
+              if (updatedFiles.length === 0) { // Check the already updated list
+              // --- END EDIT ---
                 // Start fade out animation for the container
                 elements.previewImages.style.minHeight = '0';
                 elements.previewImages.classList.add('empty-container');
@@ -1888,8 +1908,8 @@ function initializeEventListeners() {
                 }, 300);
               }
               
-              updateUploadInfo();
-              showToast("last image removed");
+              // updateUploadInfo(); // Already updated
+              // showToast("last image removed"); // Already shown
             }, 300);
           }, 300);
         }
