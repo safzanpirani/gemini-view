@@ -2453,30 +2453,36 @@ elements.playPauseButton.addEventListener('click', () => {
     }
 });
 
-// Update time displays when audio metadata loads
-elements.audioPlayer.addEventListener('loadedmetadata', () => {
-    const duration = elements.audioPlayer.duration;
-    console.log('loadedmetadata event fired. Duration:', duration); // Debug log
-    if (isFinite(duration)) {
+// Function to update total duration display safely
+function updateDurationDisplay() {
+    const audio = elements.audioPlayer;
+    const duration = audio.duration;
+    console.log('Attempting to update duration. Reported duration:', duration); // Debug log
+    if (isFinite(duration) && duration > 0) { // Check for > 0 as well
         elements.totalDurationDisplay.textContent = formatTime(duration);
     } else {
-        console.error('Invalid duration reported:', duration);
-        elements.totalDurationDisplay.textContent = '0:00'; // Default on error
+        // Keep previous value or default to 0:00 if still invalid
+        if (elements.totalDurationDisplay.textContent === '0:00' || !isFinite(duration)) {
+             elements.totalDurationDisplay.textContent = '0:00';
+        }
+        console.warn('Invalid or zero duration detected:', duration);
     }
-    // Always reset current time display on load
-    elements.currentTimeDisplay.textContent = formatTime(0);
-});
+}
 
-// Initialize time display on page load
-document.addEventListener('DOMContentLoaded', () => {
-    elements.currentTimeDisplay.textContent = formatTime(0);
-    elements.totalDurationDisplay.textContent = formatTime(0);
-});
+// Update time displays when audio metadata loads OR duration changes
+elements.audioPlayer.addEventListener('loadedmetadata', updateDurationDisplay);
+elements.audioPlayer.addEventListener('durationchange', updateDurationDisplay);
 
 // Update current time display during playback
 elements.audioPlayer.addEventListener('timeupdate', () => {
-    elements.currentTimeDisplay.textContent = formatTime(elements.audioPlayer.currentTime);
-    // TODO: Add progress drawing on static waveform here later
+    // Only update current time if duration is valid
+    if (isFinite(elements.audioPlayer.duration) && elements.audioPlayer.duration > 0) {
+        elements.currentTimeDisplay.textContent = formatTime(elements.audioPlayer.currentTime);
+        // TODO: Add progress drawing on static waveform here later
+    } else {
+        // Keep current time at 0:00 if duration is invalid
+        elements.currentTimeDisplay.textContent = formatTime(0);
+    }
 });
 
 // Reset button when audio ends
