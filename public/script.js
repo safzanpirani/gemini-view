@@ -2381,9 +2381,20 @@ async function startRecording() {
   try {
     const liveCanvas = elements.audioWaveformCanvas;
     
-    elements.startRecording.disabled = true;
-    elements.stopRecordingContainer.style.display = 'block';
+    // --- UI Updates START ---
+    elements.startRecording.style.display = 'none'; // Hide start button
+    elements.stopRecordingContainer.style.display = 'block'; // Show stop controls
+    if (liveCanvas) {
+      liveCanvas.style.display = 'block'; // Show live waveform canvas
+      clearWaveformCanvas();
+    } else {
+      console.warn("Live waveform canvas element not found!");
+    }
+    elements.audioPreviewContainer.style.display = 'none'; // Hide player preview
+    // --- UI Updates END ---
     
+    elements.startRecording.disabled = true; // Disable button logic (redundant if hidden, but safe)
+
     // Try to clear any previous recordings and reset UI
     if (mediaRecorder) {
       mediaRecorder = null;
@@ -2399,10 +2410,10 @@ async function startRecording() {
     
     // Check if canvas element exists before attempting to show or clear it
     if (liveCanvas) {
-      liveCanvas.style.display = 'block';
-      clearWaveformCanvas();
+      // liveCanvas.style.display = 'block'; // Moved visibility control up
+      // clearWaveformCanvas(); // Moved visibility control up
     } else {
-      console.warn("Live waveform canvas element not found!");
+      // console.warn("Live waveform canvas element not found!"); // Already handled
     }
     
     // Start stream and recording
@@ -2473,9 +2484,10 @@ function setupMediaRecorder(stream) {
       elements.audioPlayer.src = audioURL;
       elements.audioPreview.style.display = 'block';
       
-      const duration = await getAudioDuration(audioBlob);
-      elements.totalDurationDisplay.textContent = formatTime(duration);
-      
+      // Reset time displays until metadata loads
+      elements.currentTimeDisplay.textContent = formatTime(0);
+      elements.totalDurationDisplay.textContent = formatTime(0); // Reset to 0:00 initially
+
       await generateAndDrawStaticWaveform(audioBlob);
       
       const fileSize = (audioBlob.size / 1024).toFixed(0);
@@ -2490,13 +2502,17 @@ function setupMediaRecorder(stream) {
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        // Don't stop tracks here, let the onstop handler do it
     }
     // Stop waveform animation and hide canvas
     stopWaveformAnimation();
-    elements.audioWaveformCanvas.style.display = 'none';
-    elements.stopRecordingContainer.style.display = 'none';
-    elements.startRecording.style.display = 'block';
+    const liveCanvas = elements.audioWaveformCanvas;
+    if (liveCanvas) {
+      liveCanvas.style.display = 'none'; // Hide live waveform
+    }
+    elements.stopRecordingContainer.style.display = 'none'; // Hide stop controls
+    elements.startRecording.style.display = 'block'; // Show start button
+    elements.startRecording.disabled = false; // Re-enable start button
 }
 
 function deleteRecording() {
@@ -2559,15 +2575,15 @@ elements.playPauseButton.addEventListener('click', () => {
 function updateDurationDisplay() {
     const audio = elements.audioPlayer;
     const duration = audio.duration;
-    console.log('Attempting to update duration. Reported duration:', duration); // Debug log
-    if (isFinite(duration) && duration > 0) { // Check for > 0 as well
+    
+    if (audio.readyState >= 1 && duration && isFinite(duration) && duration > 0) { // Check readyState >= 1 (HAVE_METADATA)
         elements.totalDurationDisplay.textContent = formatTime(duration);
     } else {
-        // Keep previous value or default to 0:00 if still invalid
-        if (elements.totalDurationDisplay.textContent === '0:00' || !isFinite(duration)) {
-             elements.totalDurationDisplay.textContent = '0:00';
-        }
-        console.warn('Invalid or zero duration detected:', duration);
+        // If duration is not valid yet, keep it as 0:00 or request update again shortly
+        elements.totalDurationDisplay.textContent = '0:00';
+        // Optionally, try again in a moment if needed, but relying on durationchange is usually enough
+        // setTimeout(updateDurationDisplay, 100); 
+        console.warn('Duration not ready or invalid, keeping display at 0:00. Duration:', duration, 'ReadyState:', audio.readyState);
     }
 }
 
