@@ -1030,10 +1030,10 @@ function loadPromptPreset(presetName) {
     elements.deletePromptPreset.disabled = (presetName === "audio prompt");
     if (presetName === "audio prompt") {
         elements.deletePromptPreset.classList.add("disabled-button");
-        elements.deletePromptPreset.title = "This preset cannot be deleted";
+        elements.deletePromptPreset.title = "this preset cannot be deleted";
     } else {
         elements.deletePromptPreset.classList.remove("disabled-button");
-        elements.deletePromptPreset.title = "Delete current preset";
+        elements.deletePromptPreset.title = "delete current preset";
     }
     
     updatePromptPresetButtons();
@@ -1046,7 +1046,7 @@ function deletePromptPreset() {
     
     // Extra check to prevent deletion of audio prompt preset
     if (selectedPreset === "audio prompt") {
-        showToast("The audio prompt preset cannot be deleted");
+        showToast("the audio prompt preset cannot be deleted");
         return;
     }
 
