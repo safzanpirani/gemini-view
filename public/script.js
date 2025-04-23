@@ -2439,12 +2439,18 @@ async function startRecording() {
         drawWaveform(); // Start LIVE waveform
         
     } catch (err) {
-        console.error('Error accessing microphone:', err);
-        alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
-        stopWaveformAnimation();
-        elements.audioWaveformCanvas.style.display = 'none';
-        elements.stopRecordingContainer.style.display = 'none';
-        elements.startRecording.style.display = 'block';
+      console.error("Error accessing microphone:", err);
+      // Log specific error name for better debugging
+      if (err.name) {
+        console.error(`Error name: ${err.name}`);
+      }
+      showError(
+        `Error accessing microphone: ${err.message}. Please ensure you have granted permission and have a working microphone. (${err.name || 'Unknown Error'})`,
+        elements.startRecording
+      );
+      // Reset UI elements if needed
+      elements.startRecording.disabled = false;
+      elements.stopRecordingContainer.style.display = 'none';
     }
 }
 
