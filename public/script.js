@@ -2260,15 +2260,15 @@ async function startRecording() {
         source = audioContext.createMediaStreamSource(stream);
         source.connect(analyser);
         
-        // Configure analyser
-        analyser.fftSize = 2048; // Standard size
-        const bufferLength = analyser.frequencyBinCount;
+        // Configure analyser for frequency bars
+        analyser.fftSize = 256; // Smaller size for fewer bars
+        const bufferLength = analyser.frequencyBinCount; // Now represents frequency bins
         waveformData = new Uint8Array(bufferLength);
         
         // Show and clear canvas
         const canvas = elements.audioWaveformCanvas;
         const canvasCtx = canvas.getContext("2d");
-        canvas.style.display = 'block';
+        canvas.style.display = 'block'; // <<< Show canvas on start
         canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
         
         mediaRecorder.ondataavailable = (event) => {
@@ -2283,10 +2283,9 @@ async function startRecording() {
             elements.startRecording.style.display = 'block';
             elements.stopRecording.style.display = 'none';
             
-            // Stop waveform animation
+            // Stop waveform animation and hide canvas
             stopWaveformAnimation();
-            // Optionally clear canvas on stop, or leave the last frame
-            // clearWaveformCanvas();
+            elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on stop
         };
 
         audioChunks = [];
@@ -2300,18 +2299,18 @@ async function startRecording() {
     } catch (err) {
         console.error('Error accessing microphone:', err);
         alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
-        // Clean up waveform resources if error occurs during setup
         stopWaveformAnimation();
+        elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on error
     }
 }
 
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        // Stream tracks are stopped inside the mediaRecorder.onstop handler after blob creation
+        mediaRecorder.stop(); 
     }
-    // Stop waveform animation and clean up resources
+    // Stop waveform animation and hide canvas
     stopWaveformAnimation();
+    elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on stop
 }
 
 function deleteRecording() {
@@ -2320,19 +2319,19 @@ function deleteRecording() {
     elements.audioPlayer.src = '';
     elements.audioPreview.style.display = 'none';
     
-    // Stop animation and clear waveform
+    // Stop animation, clear, and hide waveform
     stopWaveformAnimation();
     clearWaveformCanvas();
-    elements.audioWaveformCanvas.style.display = 'none'; // Hide canvas
+    elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on delete
 }
 
-// Waveform drawing function
+// Waveform drawing function (Frequency Bars)
 function drawWaveform() {
     if (!analyser) return;
     
     animationFrameId = requestAnimationFrame(drawWaveform);
     
-    analyser.getByteTimeDomainData(waveformData); // Use time domain data for waveform
+    analyser.getByteFrequencyData(waveformData); // Get frequency data
     
     const canvas = elements.audioWaveformCanvas;
     const canvasCtx = canvas.getContext("2d");
@@ -2342,29 +2341,20 @@ function drawWaveform() {
     canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Set line style
-    canvasCtx.lineWidth = 2;
-    canvasCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
-    canvasCtx.beginPath();
-    
-    const sliceWidth = canvas.width * 1.0 / bufferLength;
+    const barWidth = (canvas.width / bufferLength) * 1.5; // Width of each bar
+    let barHeight;
     let x = 0;
     
+    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
+
     for (let i = 0; i < bufferLength; i++) {
-        const v = waveformData[i] / 128.0; // Normalize data (0 to 2)
-        const y = v * canvas.height / 2;
+        barHeight = waveformData[i] * (canvas.height / 255); // Scale height
+
+        // Draw bar centered vertically
+        canvasCtx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight);
         
-        if (i === 0) {
-            canvasCtx.moveTo(x, y);
-        } else {
-            canvasCtx.lineTo(x, y);
-        }
-        
-        x += sliceWidth;
+        x += barWidth + 1; // Move to the next bar position (with 1px gap)
     }
-    
-    canvasCtx.lineTo(canvas.width, canvas.height / 2);
-    canvasCtx.stroke();
 }
 
 function stopWaveformAnimation() {
