@@ -99,7 +99,12 @@ const elements = {
   audioPlayer: document.getElementById("audio-player"),
   deleteRecording: document.getElementById("delete-recording"),
   audioPreview: document.getElementById("audio-preview"),
-  audioWaveformCanvas: document.getElementById("audio-waveform"),
+  audioWaveformCanvas: document.getElementById("audio-waveform"), // Live waveform
+  staticWaveformCanvas: document.getElementById("static-waveform-canvas"), // Static waveform in player
+  playPauseButton: document.getElementById("play-pause-button"),
+  currentTimeDisplay: document.getElementById("current-time"),
+  totalDurationDisplay: document.getElementById("total-duration"),
+  audioPreviewContainer: document.getElementById("audio-preview"), // The whole player container
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -705,7 +710,7 @@ Present information in clear, non-technical language whenever possible. When spe
 
 4. **Contextual Interpretation:**
    - Place the work in historical/artistic context
-   - Consider cultural significance of subject or style
+   - Consider cultural significance or influence
    - Note innovative or influential aspects
    - Identify potential meaning or artist's intent
 
@@ -2248,7 +2253,68 @@ let source = null;
 let animationFrameId = null;
 let waveformData = null;
 
-// Add audio recording functions
+// Global AudioContext for decoding
+let globalAudioContext = null;
+
+// --- Static Waveform Drawing --- 
+
+// Helper to draw the static waveform from decoded audio data
+function drawStaticWaveform(canvas, audioBuffer) {
+    const canvasCtx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+    const data = audioBuffer.getChannelData(0); // Get data from channel 0
+    const step = Math.ceil(data.length / width);
+    const amp = height / 2;
+
+    // Clear canvas
+    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
+    canvasCtx.fillRect(0, 0, width, height);
+    
+    // Set line style (similar to live waveform)
+    canvasCtx.lineWidth = 1; // Can adjust thickness
+    canvasCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(0, amp); // Start in the middle vertically
+
+    for (let i = 0; i < width; i++) {
+        let min = 1.0;
+        let max = -1.0;
+
+        for (let j = 0; j < step; j++) {
+            const datum = data[(i * step) + j];
+            if (datum < min) min = datum;
+            if (datum > max) max = datum;
+        }
+        // Draw line segment representing min/max amplitude for this horizontal pixel
+        canvasCtx.lineTo(i, (1 + min) * amp);
+        canvasCtx.lineTo(i, (1 + max) * amp); 
+    }
+    canvasCtx.lineTo(width, amp); // End in the middle
+    canvasCtx.stroke();
+}
+
+// Function to decode audio blob and draw static waveform
+async function generateAndDrawStaticWaveform(blob) {
+    if (!globalAudioContext) {
+        globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    try {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioBuffer = await globalAudioContext.decodeAudioData(arrayBuffer);
+        drawStaticWaveform(elements.staticWaveformCanvas, audioBuffer);
+    } catch (error) {
+        console.error("Error decoding audio data:", error);
+        showError("Failed to process audio for waveform display.");
+        // Clear canvas on error
+        const canvas = elements.staticWaveformCanvas;
+        const canvasCtx = canvas.getContext("2d");
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+// --- Modify Recording Logic --- 
+
 async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -2260,47 +2326,53 @@ async function startRecording() {
         source = audioContext.createMediaStreamSource(stream);
         source.connect(analyser);
         
-        // Configure analyser for frequency bars
-        analyser.fftSize = 256; // Smaller size for fewer bars
-        const bufferLength = analyser.frequencyBinCount; // Now represents frequency bins
+        // Configure analyser for LIVE frequency bars
+        analyser.fftSize = 256; 
+        const bufferLength = analyser.frequencyBinCount; 
         waveformData = new Uint8Array(bufferLength);
         
-        // Show and clear canvas
-        const canvas = elements.audioWaveformCanvas;
-        const canvasCtx = canvas.getContext("2d");
-        canvas.style.display = 'block'; // <<< Show canvas on start
-        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+        // Show LIVE canvas and clear
+        const liveCanvas = elements.audioWaveformCanvas;
+        const liveCanvasCtx = liveCanvas.getContext("2d");
+        liveCanvas.style.display = 'block'; // Show LIVE waveform
+        liveCanvasCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
+        elements.audioPreviewContainer.style.display = 'none'; // Hide static player preview
         
         mediaRecorder.ondataavailable = (event) => {
             audioChunks.push(event.data);
         };
 
-        mediaRecorder.onstop = () => {
+        mediaRecorder.onstop = async () => { // Make async
             audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
             const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Set hidden player source BEFORE generating waveform
             elements.audioPlayer.src = audioUrl;
-            elements.audioPreview.style.display = 'flex';
+            
+            // Generate static waveform and show player
+            await generateAndDrawStaticWaveform(audioBlob); // Wait for drawing
+            
+            elements.audioPreviewContainer.style.display = 'flex'; // Show custom player
             elements.startRecording.style.display = 'block';
             elements.stopRecording.style.display = 'none';
             
-            // Stop waveform animation and hide canvas
+            // Stop LIVE waveform animation and hide LIVE canvas
             stopWaveformAnimation();
-            elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on stop
+            elements.audioWaveformCanvas.style.display = 'none'; 
+            resetPlayButton(); // Ensure play button shows "Play"
         };
 
         audioChunks = [];
         mediaRecorder.start();
         elements.startRecording.style.display = 'none';
         elements.stopRecording.style.display = 'block';
-        
-        // Start waveform animation
-        drawWaveform();
+        drawWaveform(); // Start LIVE waveform
         
     } catch (err) {
         console.error('Error accessing microphone:', err);
         alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
         stopWaveformAnimation();
-        elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on error
+        elements.audioWaveformCanvas.style.display = 'none'; 
     }
 }
 
@@ -2310,7 +2382,7 @@ function stopRecording() {
     }
     // Stop waveform animation and hide canvas
     stopWaveformAnimation();
-    elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on stop
+    elements.audioWaveformCanvas.style.display = 'none'; 
 }
 
 function deleteRecording() {
@@ -2319,11 +2391,82 @@ function deleteRecording() {
     elements.audioPlayer.src = '';
     elements.audioPreview.style.display = 'none';
     
-    // Stop animation, clear, and hide waveform
+    // Stop animation, clear LIVE waveform, hide LIVE canvas
     stopWaveformAnimation();
     clearWaveformCanvas();
-    elements.audioWaveformCanvas.style.display = 'none'; // <<< Hide canvas on delete
+    elements.audioWaveformCanvas.style.display = 'none';
+    
+    // Clear static waveform and hide custom player
+    const staticCanvas = elements.staticWaveformCanvas;
+    const staticCtx = staticCanvas.getContext("2d");
+    staticCtx.clearRect(0, 0, staticCanvas.width, staticCanvas.height);
+    elements.audioPreviewContainer.style.display = 'none';
+    
+    // Reset hidden audio player
+    elements.audioPlayer.src = '';
+    elements.audioPlayer.removeAttribute('src'); // Ensure it fully resets
+    resetPlayButton();
 }
+
+// --- Custom Player Listeners --- 
+
+// Helper to format time (e.g., 65 seconds -> 1:05)
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+// Helper to reset play button icon
+function resetPlayButton() {
+    elements.playPauseButton.innerHTML = '<i class="fas fa-play"></i>';
+    elements.playPauseButton.setAttribute('aria-label', 'Play');
+}
+
+// Play/Pause handler
+elements.playPauseButton.addEventListener('click', () => {
+    const audio = elements.audioPlayer;
+    if (audio.paused) {
+        audio.play();
+        elements.playPauseButton.innerHTML = '<i class="fas fa-pause"></i>';
+        elements.playPauseButton.setAttribute('aria-label', 'Pause');
+    } else {
+        audio.pause();
+       resetPlayButton();
+    }
+});
+
+// Update time displays when audio metadata loads
+elements.audioPlayer.addEventListener('loadedmetadata', () => {
+    elements.totalDurationDisplay.textContent = formatTime(elements.audioPlayer.duration);
+    elements.currentTimeDisplay.textContent = formatTime(0);
+});
+
+// Update current time display during playback
+elements.audioPlayer.addEventListener('timeupdate', () => {
+    elements.currentTimeDisplay.textContent = formatTime(elements.audioPlayer.currentTime);
+    // TODO: Add progress drawing on static waveform here later
+});
+
+// Reset button when audio ends
+elements.audioPlayer.addEventListener('ended', resetPlayButton);
+
+// Seeking handler
+elements.staticWaveformCanvas.addEventListener('click', (e) => {
+    const audio = elements.audioPlayer;
+    if (!audio.duration) return; // Can't seek if duration isn't known
+
+    const canvas = elements.staticWaveformCanvas;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = x / canvas.width;
+    audio.currentTime = audio.duration * percentage;
+    
+    // If paused, update time display immediately after seek
+    if(audio.paused) {
+        elements.currentTimeDisplay.textContent = formatTime(audio.currentTime);
+    }
+});
 
 // Waveform drawing function (Frequency Bars)
 function drawWaveform() {

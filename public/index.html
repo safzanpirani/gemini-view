@@ -44,11 +44,20 @@
                             <i class="fas fa-stop"></i> stop recording
                         </button>
                     </div>
-                    <div id="audio-preview" class="audio-preview" style="display: none;">
-                        <audio id="audio-player" controls></audio>
-                        <button id="delete-recording" class="audio-control-btn">
-                            <i class="fas fa-trash"></i> delete recording
-                        </button>
+                    <div id="audio-preview" class="audio-player-container" style="display: none;">
+                        <canvas id="static-waveform-canvas" class="waveform-canvas" width="400" height="60"></canvas>
+                        <div class="player-controls">
+                            <button id="play-pause-button" class="player-button" aria-label="Play">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <div class="time-display">
+                                <span id="current-time">0:00</span> / <span id="total-duration">0:00</span>
+                            </div>
+                        </div>
+                         <audio id="audio-player" style="display: none;"></audio>
+                        <button id="delete-recording" class="audio-control-btn delete-btn">
+                             <i class="fas fa-trash"></i> delete recording
+                         </button>
                     </div>
                     <canvas id="audio-waveform" class="audio-waveform" width="300" height="60" style="display: none;"></canvas>
                 </div>

@@ -1263,3 +1263,72 @@ input:focus, textarea:focus {
     border: 1px solid var(--border-color);
     border-radius: 4px;
 }
+
+/* Custom Audio Player Styles */
+.audio-player-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--secondary-color);
+}
+
+.waveform-canvas {
+    width: 100%;
+    max-width: 400px; /* Match audio player max width */
+    height: 60px;
+    background-color: var(--bg-color);
+    border-radius: 4px;
+    cursor: pointer; /* Indicate it's clickable for seeking */
+}
+
+.player-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+    justify-content: center; /* Center controls */
+}
+
+.player-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 50%; /* Circular button */
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.player-button:hover {
+    background-color: var(--hover-color);
+    transform: scale(1.1);
+}
+
+.time-display {
+    font-size: 14px;
+    color: var(--text-color);
+    font-family: monospace; /* Use monospace for consistent spacing */
+    flex-grow: 1; /* Take remaining space */
+    text-align: right; /* Align time to the right */
+}
+
+/* Keep delete button style consistent */
+.delete-btn {
+    background-color: #dc3545 !important; /* Ensure red background */
+    margin-top: 8px; /* Add some space above delete button */
+}
+
+.delete-btn:hover {
+    background-color: #c82333 !important;
+}
