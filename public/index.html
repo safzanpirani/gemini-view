@@ -35,47 +35,68 @@
                         <i class="fas fa-trash"></i> delete preset
                     </button>
                 </div>
-                <div id="audio-recorder" class="audio-recorder" style="display: none;">
-                    <div class="audio-controls">
+                <div id="audio-recorder" class="upload-section">
+                    <label for="audio-file-input">recorded audio:</label>
+                    <div class="file-input-wrapper">
+                        <input
+                            type="file"
+                            id="audio-file-input"
+                            accept="audio/*"
+                            class="file-input"
+                            aria-label="Upload audio file"
+                        />
+                        <div
+                            id="audio-drop-area"
+                            class="drag-drop-area"
+                            role="button"
+                            tabindex="0"
+                            aria-label="Drag and drop area for audio"
+                        >
+                            <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                            <span class="drag-drop-text">drag & drop audio file here</span>
+                            <span class="or-text">or</span>
+                            <button type="button" class="file-input-button">
+                                choose audio file
+                            </button>
+                        </div>
+                    </div>
+                    <div class="audio-controls-header">
                         <button id="start-recording" class="audio-control-btn">
                             <i class="fas fa-microphone"></i> start recording
                         </button>
-                        <button id="stop-recording" class="audio-control-btn" style="display: none;">
+                    </div>
+                    <div id="stop-recording-container" style="display: none;" class="recording-controls">
+                        <div class="recording-indicator">
+                            <i class="fas fa-circle recording-icon"></i> recording in progress...
+                        </div>
+                        <button id="stop-recording" class="audio-control-btn">
                             <i class="fas fa-stop"></i> stop recording
                         </button>
-                        <div class="audio-file-input-wrapper">
-                            <input
-                                type="file"
-                                id="audio-file-input"
-                                accept="audio/*"
-                                class="file-input"
-                                aria-label="Upload audio file"
-                            />
-                            <button type="button" class="audio-file-input-button">
-                                <i class="fas fa-file-audio"></i> choose audio file
+                    </div>
+                    <div id="audio-preview" class="audio-preview-container" style="display: none;">
+                        <div class="preview-header">
+                            <span>recorded audio</span>
+                            <button id="delete-recording" class="text-button">
+                                <i class="fas fa-times"></i> clear
                             </button>
                         </div>
-                    </div>
-                    <div class="audio-drop-area" id="audio-drop-area">
-                        <i class="fas fa-cloud-upload-alt fa-2x"></i>
-                        <span class="drag-drop-text">drag & drop audio file here</span>
-                    </div>
-                    <div id="audio-preview" class="audio-player-container" style="display: none;">
-                        <canvas id="static-waveform-canvas" class="waveform-canvas" width="400" height="60"></canvas>
-                        <div class="player-controls">
-                            <button id="play-pause-button" class="player-button" aria-label="Play">
-                                <i class="fas fa-play"></i>
-                            </button>
-                            <div class="time-display">
-                                <span id="current-time">0:00</span> / <span id="total-duration">0:00</span>
+                        <div id="audio-waveform-container" class="waveform-container">
+                            <canvas id="static-waveform-canvas" class="waveform-canvas" width="400" height="60"></canvas>
+                            <div class="player-controls">
+                                <button id="play-pause-button" class="player-button" aria-label="Play">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <div class="time-display">
+                                    <span id="current-time">0:00</span> / <span id="total-duration">0:00</span>
+                                </div>
                             </div>
                         </div>
-                         <audio id="audio-player" style="display: none;"></audio>
-                        <button id="delete-recording" class="audio-control-btn delete-btn">
-                             <i class="fas fa-trash"></i> delete recording
-                         </button>
+                        <audio id="audio-player" style="display: none;"></audio>
                     </div>
-                    <canvas id="audio-waveform" class="audio-waveform" width="300" height="60" style="display: none;"></canvas>
+                    <div class="upload-info">
+                        <span id="audio-status">no audio recorded</span>
+                        <span id="audio-size">0 kb total</span>
+                    </div>
                 </div>
             </div>
             <div class="upload-section">
