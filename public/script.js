@@ -966,7 +966,18 @@ function updatePromptPresetButtons() {
   Object.entries(presets).forEach(([name, preset]) => {
     const button = document.createElement("button");
     button.className = "preset-button";
-    button.textContent = name; // Instead of innerHTML
+    
+    // Add icon for audio prompt preset
+    if (name === "audio prompt") {
+        const icon = document.createElement("i");
+        icon.className = "fas fa-microphone preset-icon"; // Font Awesome microphone icon
+        button.appendChild(icon);
+    }
+    
+    const textSpan = document.createElement("span");
+    textSpan.textContent = name;
+    button.appendChild(textSpan);
+    
     button.onclick = () => loadPromptPreset(name);
 
     if (name === selectedPreset) {
