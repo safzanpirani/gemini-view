@@ -99,6 +99,7 @@ const elements = {
   audioPlayer: document.getElementById("audio-player"),
   deleteRecording: document.getElementById("delete-recording"),
   audioPreview: document.getElementById("audio-preview"),
+  audioWaveformCanvas: document.getElementById("audio-waveform"),
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -2240,11 +2241,35 @@ let mediaRecorder = null;
 let audioChunks = [];
 let audioBlob = null;
 
+// Add audio analysis variables
+let audioContext = null;
+let analyser = null;
+let source = null;
+let animationFrameId = null;
+let waveformData = null;
+
 // Add audio recording functions
 async function startRecording() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
+        
+        // Initialize AudioContext and Analyser for waveform
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        
+        // Configure analyser
+        analyser.fftSize = 2048; // Standard size
+        const bufferLength = analyser.frequencyBinCount;
+        waveformData = new Uint8Array(bufferLength);
+        
+        // Show and clear canvas
+        const canvas = elements.audioWaveformCanvas;
+        const canvasCtx = canvas.getContext("2d");
+        canvas.style.display = 'block';
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
         
         mediaRecorder.ondataavailable = (event) => {
             audioChunks.push(event.data);
@@ -2257,23 +2282,36 @@ async function startRecording() {
             elements.audioPreview.style.display = 'flex';
             elements.startRecording.style.display = 'block';
             elements.stopRecording.style.display = 'none';
+            
+            // Stop waveform animation
+            stopWaveformAnimation();
+            // Optionally clear canvas on stop, or leave the last frame
+            // clearWaveformCanvas();
         };
 
         audioChunks = [];
         mediaRecorder.start();
         elements.startRecording.style.display = 'none';
         elements.stopRecording.style.display = 'block';
+        
+        // Start waveform animation
+        drawWaveform();
+        
     } catch (err) {
         console.error('Error accessing microphone:', err);
         alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
+        // Clean up waveform resources if error occurs during setup
+        stopWaveformAnimation();
     }
 }
 
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        // Stream tracks are stopped inside the mediaRecorder.onstop handler after blob creation
     }
+    // Stop waveform animation and clean up resources
+    stopWaveformAnimation();
 }
 
 function deleteRecording() {
@@ -2281,6 +2319,80 @@ function deleteRecording() {
     audioChunks = [];
     elements.audioPlayer.src = '';
     elements.audioPreview.style.display = 'none';
+    
+    // Stop animation and clear waveform
+    stopWaveformAnimation();
+    clearWaveformCanvas();
+    elements.audioWaveformCanvas.style.display = 'none'; // Hide canvas
+}
+
+// Waveform drawing function
+function drawWaveform() {
+    if (!analyser) return;
+    
+    animationFrameId = requestAnimationFrame(drawWaveform);
+    
+    analyser.getByteTimeDomainData(waveformData); // Use time domain data for waveform
+    
+    const canvas = elements.audioWaveformCanvas;
+    const canvasCtx = canvas.getContext("2d");
+    const bufferLength = analyser.frequencyBinCount;
+    
+    // Clear the canvas
+    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Set line style
+    canvasCtx.lineWidth = 2;
+    canvasCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
+    canvasCtx.beginPath();
+    
+    const sliceWidth = canvas.width * 1.0 / bufferLength;
+    let x = 0;
+    
+    for (let i = 0; i < bufferLength; i++) {
+        const v = waveformData[i] / 128.0; // Normalize data (0 to 2)
+        const y = v * canvas.height / 2;
+        
+        if (i === 0) {
+            canvasCtx.moveTo(x, y);
+        } else {
+            canvasCtx.lineTo(x, y);
+        }
+        
+        x += sliceWidth;
+    }
+    
+    canvasCtx.lineTo(canvas.width, canvas.height / 2);
+    canvasCtx.stroke();
+}
+
+function stopWaveformAnimation() {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    // Disconnect analyser and close context
+    if (source) {
+        source.disconnect();
+        source = null;
+    }
+    if (analyser) {
+        analyser.disconnect();
+        analyser = null;
+    }
+    if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close().catch(e => console.error('Error closing AudioContext:', e));
+        audioContext = null;
+    }
+    waveformData = null;
+}
+
+function clearWaveformCanvas() {
+    const canvas = elements.audioWaveformCanvas;
+    const canvasCtx = canvas.getContext("2d");
+    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 // Add event listeners for audio controls

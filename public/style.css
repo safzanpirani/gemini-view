@@ -1254,3 +1254,12 @@ input:focus, textarea:focus {
 #delete-recording:hover {
     background-color: #c82333;
 }
+
+/* Waveform canvas styles */
+.audio-waveform {
+    display: block;
+    margin: 16px auto 0; /* Center and add top margin */
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
