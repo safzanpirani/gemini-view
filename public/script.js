@@ -2378,80 +2378,113 @@ async function generateAndDrawStaticWaveform(blob) {
 // --- Modify Recording Logic --- 
 
 async function startRecording() {
-    try {
-        // When starting a recording, make sure we reset any previously uploaded audio
-        if (audioBlob) {
-            deleteRecording();
-        }
-        
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        
-        // Initialize AudioContext and Analyser for waveform
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        source = audioContext.createMediaStreamSource(stream);
-        source.connect(analyser);
-        
-        // Configure analyser for LIVE frequency bars
-        analyser.fftSize = 256; 
-        const bufferLength = analyser.frequencyBinCount; 
-        waveformData = new Uint8Array(bufferLength);
-        
-        // Show LIVE canvas and clear
-        const liveCanvas = elements.audioWaveformCanvas;
-        const liveCanvasCtx = liveCanvas.getContext("2d");
-        liveCanvas.style.display = 'block'; // Show LIVE waveform
-        liveCanvasCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-        
-        // Hide static player preview and show recording controls
-        elements.audioPreviewContainer.style.display = 'none';
-        elements.stopRecordingContainer.style.display = 'flex';
-        elements.startRecording.style.display = 'none';
-        
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = async () => { // Make async
-            audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            
-            // Set hidden player source BEFORE generating waveform
-            elements.audioPlayer.src = audioUrl;
-            
-            // Generate static waveform and show player
-            await generateAndDrawStaticWaveform(audioBlob); // Wait for drawing
-            
-            // Hide recording controls and show the player
-            elements.audioPreviewContainer.style.display = 'flex';
-            elements.startRecording.style.display = 'block';
-            elements.stopRecordingContainer.style.display = 'none';
-            
-            // Stop LIVE waveform animation and hide LIVE canvas
-            stopWaveformAnimation();
-            elements.audioWaveformCanvas.style.display = 'none'; 
-            resetPlayButton(); // Ensure play button shows "Play"
-        };
-
-        audioChunks = [];
-        mediaRecorder.start();
-        drawWaveform(); // Start LIVE waveform
-        
-    } catch (err) {
-      console.error("Error accessing microphone:", err);
-      // Log specific error name for better debugging
-      if (err.name) {
-        console.error(`Error name: ${err.name}`);
-      }
-      showError(
-        `Error accessing microphone: ${err.message}. Please ensure you have granted permission and have a working microphone. (${err.name || 'Unknown Error'})`,
-        elements.startRecording
-      );
-      // Reset UI elements if needed
-      elements.startRecording.disabled = false;
-      elements.stopRecordingContainer.style.display = 'none';
+  try {
+    const liveCanvas = elements.audioWaveformCanvas;
+    
+    elements.startRecording.disabled = true;
+    elements.stopRecordingContainer.style.display = 'block';
+    
+    // Try to clear any previous recordings and reset UI
+    if (mediaRecorder) {
+      mediaRecorder = null;
     }
+    
+    if (audioChunks) {
+      audioChunks = [];
+    }
+    
+    if (audioBlob) {
+      audioBlob = null;
+    }
+    
+    // Check if canvas element exists before attempting to show or clear it
+    if (liveCanvas) {
+      liveCanvas.style.display = 'block';
+      clearWaveformCanvas();
+    } else {
+      console.warn("Live waveform canvas element not found!");
+    }
+    
+    // Start stream and recording
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioStream = stream;
+    
+    // Set up audio context for visualization
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    analyser.fftSize = 256;
+    
+    // Initialize waveform data array
+    const bufferLength = analyser.frequencyBinCount;
+    waveformData = new Uint8Array(bufferLength);
+    
+    // Only start waveform animation if canvas exists
+    if (liveCanvas) {
+      requestAnimationFrame(drawWaveform);
+    }
+    
+    // Set up the MediaRecorder
+    setupMediaRecorder(stream);
+    
+  } catch (err) {
+    console.error("Error accessing microphone:", err);
+    // Log specific error name for better debugging
+    if (err.name) {
+      console.error(`Error name: ${err.name}`);
+    }
+    showError(
+      `Error accessing microphone: ${err.message}. Please ensure you have granted permission and have a working microphone. (${err.name || 'Unknown Error'})`,
+      elements.startRecording
+    );
+    // Reset UI elements if needed
+    elements.startRecording.disabled = false;
+    elements.stopRecordingContainer.style.display = 'none';
+  }
+}
+
+// MediaRecorder setup
+function setupMediaRecorder(stream) {
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  
+  mediaRecorder.ondataavailable = event => {
+    audioChunks.push(event.data);
+  };
+  
+  mediaRecorder.onstop = async () => {
+    const liveCanvas = elements.audioWaveformCanvas;
+    
+    // Only hide the canvas if it exists
+    if (liveCanvas) {
+      liveCanvas.style.display = 'none';
+    }
+    
+    if (audioStream) {
+      audioStream.getTracks().forEach(track => track.stop());
+      audioStream = null;
+    }
+    
+    if (audioChunks.length > 0) {
+      audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audioURL = URL.createObjectURL(audioBlob);
+      elements.audioPlayer.src = audioURL;
+      elements.audioPreview.style.display = 'block';
+      
+      const duration = await getAudioDuration(audioBlob);
+      elements.totalDurationDisplay.textContent = formatTime(duration);
+      
+      await generateAndDrawStaticWaveform(audioBlob);
+      
+      const fileSize = (audioBlob.size / 1024).toFixed(0);
+      document.getElementById('audio-status').textContent = 'Recording ready';
+      document.getElementById('audio-size').textContent = `${fileSize} kb total`;
+    }
+  };
+  
+  mediaRecorder.start();
 }
 
 function stopRecording() {
@@ -2753,3 +2786,23 @@ elements.audioDropArea.addEventListener('drop', (e) => {
 elements.audioFileInputButton.addEventListener('click', () => {
     elements.audioFileInput.click();
 });
+
+// Function to get the duration of an audio blob
+async function getAudioDuration(blob) {
+  return new Promise((resolve) => {
+    const tempAudio = new Audio();
+    tempAudio.src = URL.createObjectURL(blob);
+    
+    tempAudio.onloadedmetadata = () => {
+      resolve(tempAudio.duration);
+      URL.revokeObjectURL(tempAudio.src);
+    };
+    
+    // Fallback if metadata doesn't load
+    tempAudio.onerror = () => {
+      console.warn("Could not load audio metadata");
+      resolve(0);
+      URL.revokeObjectURL(tempAudio.src);
+    };
+  });
+}
