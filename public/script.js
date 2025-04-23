@@ -1011,34 +1011,52 @@ function savePromptPreset() {
   updatePromptPresetButtons();
 }
 
+// Modify the loadPromptPreset function to handle disabling delete button for audio preset
 function loadPromptPreset(presetName) {
-  const presets = JSON.parse(localStorage.getItem("prompt_presets") || "{}");
-  const preset = presets[presetName];
-  if (!preset) return;
+    const presets = JSON.parse(localStorage.getItem("prompt_presets") || "{}");
+    const preset = presets[presetName];
+    if (!preset) return;
 
-  elements.systemPrompt.value = preset.prompt;
-  localStorage.setItem("selected_prompt_preset", presetName);
-  
-  // Show/hide audio recorder based on preset
-  elements.audioRecorder.style.display = presetName === "audio prompt" ? "block" : "none";
-  if (presetName !== "audio prompt") {
-      deleteRecording(); // Clear any existing recording when switching away
-  }
-  
-  updatePromptPresetButtons();
+    elements.systemPrompt.value = preset.prompt;
+    localStorage.setItem("selected_prompt_preset", presetName);
+    
+    // Show/hide audio recorder based on preset
+    elements.audioRecorder.style.display = presetName === "audio prompt" ? "block" : "none";
+    if (presetName !== "audio prompt") {
+        deleteRecording(); // Clear any existing recording when switching away
+    }
+    
+    // Disable delete button if the selected preset is "audio prompt"
+    elements.deletePromptPreset.disabled = (presetName === "audio prompt");
+    if (presetName === "audio prompt") {
+        elements.deletePromptPreset.classList.add("disabled-button");
+        elements.deletePromptPreset.title = "This preset cannot be deleted";
+    } else {
+        elements.deletePromptPreset.classList.remove("disabled-button");
+        elements.deletePromptPreset.title = "Delete current preset";
+    }
+    
+    updatePromptPresetButtons();
 }
 
+// Add check in deletePromptPreset function as a fallback
 function deletePromptPreset() {
-  const selectedPreset = localStorage.getItem("selected_prompt_preset");
-  if (!selectedPreset) return;
+    const selectedPreset = localStorage.getItem("selected_prompt_preset");
+    if (!selectedPreset) return;
+    
+    // Extra check to prevent deletion of audio prompt preset
+    if (selectedPreset === "audio prompt") {
+        showToast("The audio prompt preset cannot be deleted");
+        return;
+    }
 
-  if (confirm(`delete preset "${selectedPreset}"?`)) {
-    const presets = JSON.parse(localStorage.getItem("prompt_presets") || "{}");
-    delete presets[selectedPreset];
-    localStorage.setItem("prompt_presets", JSON.stringify(presets));
-    localStorage.removeItem("selected_prompt_preset");
-    updatePromptPresetButtons();
-  }
+    if (confirm(`delete preset "${selectedPreset}"?`)) {
+        const presets = JSON.parse(localStorage.getItem("prompt_presets") || "{}");
+        delete presets[selectedPreset];
+        localStorage.setItem("prompt_presets", JSON.stringify(presets));
+        localStorage.removeItem("selected_prompt_preset");
+        updatePromptPresetButtons();
+    }
 }
 
 elements.systemPrompt.value = `you are a witty and humorous dating app assistant that always writes in lowercase, specializing in crafting engaging responses to hinge profiles. you're helping a 22m looking for meaningful connections with women. your task is to generate at least 4 different witty, funny, and slightly cheeky responses that blend silly/sarcastic vibes and flirty undertones. your responses should:

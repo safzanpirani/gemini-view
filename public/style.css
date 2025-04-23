@@ -1398,3 +1398,15 @@ input:focus, textarea:focus {
 .delete-btn:hover {
     background-color: #c82333 !important;
 }
+
+/* Disabled button styles */
+.disabled-button {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
