@@ -1332,6 +1332,12 @@ function toggleTheme() {
   document.body.setAttribute("data-theme", newTheme);
   elements.themeIcon.textContent = newTheme === "dark" ? "☀️" : "🌙";
   localStorage.setItem("theme", newTheme);
+
+  // Redraw static waveform if audio is loaded
+  if (audioBlob && elements.audioPreviewContainer.style.display !== 'none') {
+    console.log("Theme changed, redrawing static waveform...");
+    generateAndDrawStaticWaveform(audioBlob);
+  }
 }
 
 function fileToBase64(file) {
