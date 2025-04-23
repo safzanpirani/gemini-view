@@ -43,6 +43,22 @@
                         <button id="stop-recording" class="audio-control-btn" style="display: none;">
                             <i class="fas fa-stop"></i> stop recording
                         </button>
+                        <div class="audio-file-input-wrapper">
+                            <input
+                                type="file"
+                                id="audio-file-input"
+                                accept="audio/*"
+                                class="file-input"
+                                aria-label="Upload audio file"
+                            />
+                            <button type="button" class="audio-file-input-button">
+                                <i class="fas fa-file-audio"></i> choose audio file
+                            </button>
+                        </div>
+                    </div>
+                    <div class="audio-drop-area" id="audio-drop-area">
+                        <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                        <span class="drag-drop-text">drag & drop audio file here</span>
                     </div>
                     <div id="audio-preview" class="audio-player-container" style="display: none;">
                         <canvas id="static-waveform-canvas" class="waveform-canvas" width="400" height="60"></canvas>

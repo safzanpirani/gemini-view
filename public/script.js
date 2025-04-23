@@ -105,6 +105,9 @@ const elements = {
   currentTimeDisplay: document.getElementById("current-time"),
   totalDurationDisplay: document.getElementById("total-duration"),
   audioPreviewContainer: document.getElementById("audio-preview"), // The whole player container
+  audioFileInput: document.getElementById("audio-file-input"),
+  audioFileInputButton: document.querySelector(".audio-file-input-button"),
+  audioDropArea: document.getElementById("audio-drop-area"),
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -2357,6 +2360,11 @@ async function generateAndDrawStaticWaveform(blob) {
 
 async function startRecording() {
     try {
+        // When starting a recording, make sure we reset any previously uploaded audio
+        if (audioBlob) {
+            deleteRecording();
+        }
+        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         
@@ -2446,6 +2454,11 @@ function deleteRecording() {
     elements.audioPlayer.src = '';
     elements.audioPlayer.removeAttribute('src'); // Ensure it fully resets
     resetPlayButton();
+    
+    // Also clear the file input
+    if (elements.audioFileInput && elements.audioFileInput.value) {
+        elements.audioFileInput.value = '';
+    }
 }
 
 // --- Custom Player Listeners --- 
@@ -2624,3 +2637,84 @@ function displayResponse(data) {
         alert('Error displaying response. Please try again.');
     }
 }
+
+// --- File-based Audio Handling ---
+
+// Handle audio file selection via the file input
+elements.audioFileInput.addEventListener('change', handleAudioFileSelection);
+
+// Function to handle selected audio file
+async function handleAudioFileSelection(event) {
+    const files = event.target.files || event.dataTransfer.files;
+    if (!files.length) return;
+    
+    const audioFile = files[0]; // Take only the first file if multiple are selected
+    
+    // Validate audio file
+    if (!audioFile.type.match('audio.*')) {
+        showError('Please select an audio file');
+        return;
+    }
+    
+    try {
+        // Process the audio file
+        await processAudioFile(audioFile);
+        
+        // Reset the file input value to allow selecting the same file again
+        if (event.target.value) {
+            event.target.value = '';
+        }
+    } catch (error) {
+        console.error('Error processing audio file:', error);
+        showError('Error processing audio file');
+    }
+}
+
+// Handle the selected audio file
+async function processAudioFile(file) {
+    // Create a URL for the audio file
+    audioBlob = file;
+    const audioUrl = URL.createObjectURL(audioBlob);
+    
+    // Set the audio player source
+    elements.audioPlayer.src = audioUrl;
+    
+    // Generate and draw the static waveform
+    await generateAndDrawStaticWaveform(audioBlob);
+    
+    // Show the audio player and hide the live waveform
+    elements.audioPreviewContainer.style.display = 'flex';
+    elements.audioWaveformCanvas.style.display = 'none';
+    
+    // Ensure play button shows "Play"
+    resetPlayButton();
+}
+
+// --- Drag and Drop Handling ---
+
+// Add event listeners for drag and drop on the audio drop area
+elements.audioDropArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    elements.audioDropArea.classList.add('dragover');
+});
+
+elements.audioDropArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    elements.audioDropArea.classList.remove('dragover');
+});
+
+elements.audioDropArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    elements.audioDropArea.classList.remove('dragover');
+    
+    // Process the dropped files
+    handleAudioFileSelection(e);
+});
+
+// Make the file input button work
+elements.audioFileInputButton.addEventListener('click', () => {
+    elements.audioFileInput.click();
+});
