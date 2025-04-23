@@ -2263,34 +2263,51 @@ function drawStaticWaveform(canvas, audioBuffer) {
     const canvasCtx = canvas.getContext("2d");
     const width = canvas.width;
     const height = canvas.height;
+    
+    // Clear canvas first
+    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
+    canvasCtx.fillRect(0, 0, width, height);
+
+    if (!audioBuffer) { // Handle case where buffer is null
+        console.error("Cannot draw static waveform: audioBuffer is null");
+        return;
+    }
+
     const data = audioBuffer.getChannelData(0); // Get data from channel 0
     const step = Math.ceil(data.length / width);
     const amp = height / 2;
-
-    // Clear canvas
-    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
-    canvasCtx.fillRect(0, 0, width, height);
     
-    // Set line style (similar to live waveform)
-    canvasCtx.lineWidth = 1; // Can adjust thickness
+    // Set line style
+    canvasCtx.lineWidth = 1; 
     canvasCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
     canvasCtx.beginPath();
-    canvasCtx.moveTo(0, amp); // Start in the middle vertically
+    
+    let currentX = 0;
 
-    for (let i = 0; i < width; i++) {
+    for (let i = 0; i < data.length; i += step) {
         let min = 1.0;
         let max = -1.0;
-
-        for (let j = 0; j < step; j++) {
-            const datum = data[(i * step) + j];
+        // Calculate min/max for the segment
+        for (let j = 0; j < step && i + j < data.length; j++) {
+            const datum = data[i + j];
             if (datum < min) min = datum;
             if (datum > max) max = datum;
         }
-        // Draw line segment representing min/max amplitude for this horizontal pixel
-        canvasCtx.lineTo(i, (1 + min) * amp);
-        canvasCtx.lineTo(i, (1 + max) * amp); 
+        
+        // Guard against NaN/Infinity in min/max if data is bad
+        min = isFinite(min) ? min : 0;
+        max = isFinite(max) ? max : 0;
+
+        // Draw a vertical line for this segment
+        const yMin = (1 + min) * amp;
+        const yMax = (1 + max) * amp;
+        
+        canvasCtx.moveTo(currentX, yMin);
+        canvasCtx.lineTo(currentX, yMax);
+        
+        currentX++; // Move to the next horizontal pixel
+        if (currentX > width) break; // Stop if we exceed canvas width
     }
-    canvasCtx.lineTo(width, amp); // End in the middle
     canvasCtx.stroke();
 }
 
@@ -2438,8 +2455,22 @@ elements.playPauseButton.addEventListener('click', () => {
 
 // Update time displays when audio metadata loads
 elements.audioPlayer.addEventListener('loadedmetadata', () => {
-    elements.totalDurationDisplay.textContent = formatTime(elements.audioPlayer.duration);
+    const duration = elements.audioPlayer.duration;
+    console.log('loadedmetadata event fired. Duration:', duration); // Debug log
+    if (isFinite(duration)) {
+        elements.totalDurationDisplay.textContent = formatTime(duration);
+    } else {
+        console.error('Invalid duration reported:', duration);
+        elements.totalDurationDisplay.textContent = '0:00'; // Default on error
+    }
+    // Always reset current time display on load
     elements.currentTimeDisplay.textContent = formatTime(0);
+});
+
+// Initialize time display on page load
+document.addEventListener('DOMContentLoaded', () => {
+    elements.currentTimeDisplay.textContent = formatTime(0);
+    elements.totalDurationDisplay.textContent = formatTime(0);
 });
 
 // Update current time display during playback
