@@ -93,9 +93,33 @@ const elements = {
   presetButtons: document.querySelector(".preset-buttons"),
   factoryReset: document.getElementById("factory-reset"),
   fileInputButton: document.querySelector(".file-input-button"),
+  audioRecorder: document.getElementById("audio-recorder"),
+  startRecording: document.getElementById("start-recording"),
+  stopRecording: document.getElementById("stop-recording"),
+  audioPlayer: document.getElementById("audio-player"),
+  deleteRecording: document.getElementById("delete-recording"),
+  audioPreview: document.getElementById("audio-preview"),
 };
 
 const DEFAULT_PROMPT_PRESETS = {
+  "audio prompt": {
+    prompt: `You are a multimodal AI assistant that will receive an audio recording from the user along with an image. Your task is to:
+
+1. Listen to the audio recording which contains the user's verbal prompt/question about the image
+2. Process both the audio content and the image together
+3. Respond appropriately based on what was asked in the audio recording about the image
+
+Note that this preset will CLEAR any existing system prompt and use the audio recording as the primary instruction source.
+
+Guidelines:
+- Pay careful attention to the specific request/question in the audio
+- Consider both the audio content and visual content together
+- Provide relevant details from both modalities in your response
+- If the audio is unclear, request clarification
+- Maintain a helpful and informative tone
+
+The audio recording will serve as your system prompt and primary instruction source.`,
+  },
   "calorie guesser": {
     prompt: `You are an expert nutritional analysis AI, capable of estimating the calorie content of food items based on images provided. Your primary goal is to provide a reasonable calorie estimate along with an explanation of your reasoning. You should be cautious and conservative in your estimations, prioritizing accuracy within a reasonable range over precision to an exact number.
 
@@ -974,6 +998,13 @@ function loadPromptPreset(presetName) {
 
   elements.systemPrompt.value = preset.prompt;
   localStorage.setItem("selected_prompt_preset", presetName);
+  
+  // Show/hide audio recorder based on preset
+  elements.audioRecorder.style.display = presetName === "audio prompt" ? "block" : "none";
+  if (presetName !== "audio prompt") {
+      deleteRecording(); // Clear any existing recording when switching away
+  }
+  
   updatePromptPresetButtons();
 }
 
@@ -1438,162 +1469,88 @@ function factoryReset() {
   }
 }
 
-// Enhanced submit handling
-async function handleSubmit(isFollowup = false) {
-  const button = isFollowup ? elements.followupBtn : elements.submitBtn;
-  const prompt = isFollowup ? elements.followupPrompt.value : elements.systemPrompt.value;
-
-  if (!isFollowup && elements.imageUpload.files.length === 0) {
-    showError('please upload at least one image', elements.imageUpload);
-    return;
-  }
-
-  if (!prompt.trim()) {
-    showError('please enter a prompt', isFollowup ? elements.followupPrompt : elements.systemPrompt);
-    return;
-  }
-
-  let timeInterval;
-  try {
-    isLoading = true;
-    button.disabled = true;
-    document.body.style.cursor = 'wait';
-
-    const startTime = performance.now();
-    button.innerHTML = `
-      <div class="loading-state">
-        <div class="loading-spinner"></div>
-        <span>processing... (0s)</span>
-      </div>
-    `;
-
-    // Update processing time
-    timeInterval = setInterval(() => {
-      const seconds = Math.round((performance.now() - startTime) / 1000);
-      button.innerHTML = `
-        <div class="loading-state">
-          <div class="loading-spinner"></div>
-          <span>processing... (${seconds}s)</span>
-        </div>
-      `;
-    }, 1000);
-
-    let payload;
-    if (isFollowup) {
-      const previousResponse = elements.responseContent.textContent;
-      const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
-      
-      payload = {
-        contents: {
-          role: "user",
-          parts: [{ text: elements.systemPrompt.value + "\n\n" + followupPrompt }],
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          temperature: parseFloat(elements.temperatureInput.value),
-        },
-      };
+// Modify the submit handler to include audio data when present
+async function handleSubmit() {
+    if (elements.submitBtn.disabled) return;
+    
+    const selectedPreset = localStorage.getItem("selected_prompt_preset");
+    
+    if (selectedPreset === "audio prompt" && audioBlob) {
+        try {
+            // Convert audio blob to base64
+            const base64Audio = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(audioBlob);
+            });
+            
+            // Create the audio part for the API request
+            const audioPart = {
+                data: base64Audio,
+                mime_type: 'audio/mp3'
+            };
+            
+            // Add the audio data to the request
+            const requestData = {
+                model: 'gemini-2.0-flash',
+                contents: [
+                    { text: 'Process this audio prompt about the image' },
+                    audioPart,
+                    ...getImageParts() // Get existing image parts
+                ],
+                temperature: parseFloat(elements.temperatureInput.value)
+            };
+            
+            // Send the request
+            elements.submitBtn.disabled = true;
+            elements.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) throw new Error('API request failed');
+            
+            const data = await response.json();
+            displayResponse(data);
+        } catch (error) {
+            console.error('Error processing audio:', error);
+            alert('Error processing audio recording. Please try again.');
+        } finally {
+            elements.submitBtn.disabled = false;
+            elements.submitBtn.innerHTML = 'submit';
+        }
     } else {
-      const files = Array.from(elements.imageUpload.files);
-      if (files.length === 0) {
-        showError('please upload at least one image', elements.imageUpload);
-        return;
-      }
-
-      // Convert all files to base64
-      const base64Images = await Promise.all(
-        files.map((file) => fileToBase64(file)),
-      );
-
-      const inlineDataArray = base64Images.map((base64Image, index) => ({
-        inlineData: {
-          mimeType: files[index].type,
-          data: base64Image.split(",")[1],
-        },
-      }));
-
-      payload = {
-        contents: [
-          {
-            parts: [{ text: prompt }, ...inlineDataArray],
-          },
-        ],
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          temperature: parseFloat(elements.temperatureInput.value),
-        },
-      };
+        // Proceed with normal submission
+        submitToAPI();
     }
-
-    console.log("Sending payload:", JSON.stringify(payload, null, 2));
-    const data = await makeApiCall(payload);
-    console.log("API response:", data);
-
-    if (data.candidates && data.candidates.length > 0) {
-      const rawResponse = data.candidates[0].content.parts[0].text;
-      // Sanitize and format the response
-      const sanitizedResponse = DOMPurify.sanitize(rawResponse);
-      const formattedResponse = marked.parse(sanitizedResponse);
-
-      elements.responseContent.innerHTML = formattedResponse;
-      elements.responseContent.closest('.response-section').classList.add('visible');
-      
-      // Store the response in conversation history
-      handleNewAssistantResponse(rawResponse);
-      
-      // Add history entry: record current prompt, preview images HTML, and raw response
-      addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
-    } else {
-      throw new Error("no candidates in api response");
-    }
-  } catch (error) {
-    console.error("detailed error:", error);
-    showError(error.message || 'an error occurred while processing your request', button);
-  } finally {
-    if (timeInterval) {
-      clearInterval(timeInterval);
-    }
-    isLoading = false;
-    button.disabled = false;
-    document.body.style.cursor = 'default';
-    button.innerHTML = isFollowup ? "send follow-up" : "get response";
-    if (isFollowup) elements.followupPrompt.value = "";
-  }
 }
+
+// Helper function to get image parts from the preview
+function getImageParts() {
+    const imageParts = [];
+    const previewImages = document.querySelectorAll('.preview-image');
+    
+    previewImages.forEach(img => {
+        if (img.src.startsWith('data:image')) {
+            const [header, base64] = img.src.split(',');
+            const mime = header.match(/data:(.*);base64/)[1];
+            imageParts.push({
+                data: base64,
+                mime_type: mime
+            });
+        }
+    });
+    
+    return imageParts;
+}
+
+// Update the submit button event listener
+elements.submitBtn.removeEventListener('click', submitToAPI);
+elements.submitBtn.addEventListener('click', handleSubmit);
 
 // Add copy functionality
 function addCopyButton() {
@@ -2170,3 +2127,88 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Add audio recording variables
+let mediaRecorder = null;
+let audioChunks = [];
+let audioBlob = null;
+
+// Add audio recording functions
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            elements.audioPlayer.src = audioUrl;
+            elements.audioPreview.style.display = 'flex';
+            elements.startRecording.style.display = 'block';
+            elements.stopRecording.style.display = 'none';
+        };
+
+        audioChunks = [];
+        mediaRecorder.start();
+        elements.startRecording.style.display = 'none';
+        elements.stopRecording.style.display = 'block';
+    } catch (err) {
+        console.error('Error accessing microphone:', err);
+        alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+}
+
+function deleteRecording() {
+    audioBlob = null;
+    audioChunks = [];
+    elements.audioPlayer.src = '';
+    elements.audioPreview.style.display = 'none';
+}
+
+// Add event listeners for audio controls
+elements.startRecording.addEventListener('click', startRecording);
+elements.stopRecording.addEventListener('click', stopRecording);
+elements.deleteRecording.addEventListener('click', deleteRecording);
+
+// Add the displayResponse function
+function displayResponse(data) {
+    if (data.error) {
+        alert('Error: ' + data.error);
+        return;
+    }
+    
+    try {
+        const response = data.response || data.text || '';
+        const sanitizedResponse = DOMPurify.sanitize(response);
+        const formattedResponse = marked.parse(sanitizedResponse);
+        
+        elements.responseContent.innerHTML = formattedResponse;
+        elements.responseContent.closest('.response-section').classList.add('visible');
+        
+        // Store in history if needed
+        if (typeof handleNewAssistantResponse === 'function') {
+            handleNewAssistantResponse(response);
+        }
+        
+        // Add to history if the function exists
+        if (typeof addHistoryEntry === 'function') {
+            const prompt = elements.systemPrompt.value;
+            const previewHtml = document.getElementById('preview-images').innerHTML;
+            addHistoryEntry(prompt, previewHtml, response);
+        }
+    } catch (error) {
+        console.error('Error displaying response:', error);
+        alert('Error displaying response. Please try again.');
+    }
+}

@@ -1192,3 +1192,65 @@ input:focus, textarea:focus {
     margin: 4px;
     border-radius: 4px;
 }
+
+/* Audio recorder styles */
+.audio-recorder {
+    margin-top: 20px;
+    padding: 20px;
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    background-color: var(--secondary-color);
+}
+
+.audio-controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.audio-control-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 999px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.audio-control-btn:hover {
+    background-color: var(--hover-color);
+    transform: translateY(-1px);
+}
+
+.audio-control-btn i {
+    font-size: 16px;
+}
+
+.audio-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.audio-preview audio {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 8px;
+}
+
+#delete-recording {
+    background-color: #dc3545;
+}
+
+#delete-recording:hover {
+    background-color: #c82333;
+}
