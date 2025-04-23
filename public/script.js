@@ -1469,88 +1469,187 @@ function factoryReset() {
   }
 }
 
-// Modify the submit handler to include audio data when present
-async function handleSubmit() {
-    if (elements.submitBtn.disabled) return;
+// Modify the handleSubmit function to include audio handling
+async function handleSubmit(isFollowup = false) {
+    const button = isFollowup ? elements.followupBtn : elements.submitBtn;
+    const prompt = isFollowup ? elements.followupPrompt.value : elements.systemPrompt.value;
     
-    const selectedPreset = localStorage.getItem("selected_prompt_preset");
-    
-    if (selectedPreset === "audio prompt" && audioBlob) {
-        try {
-            // Convert audio blob to base64
-            const base64Audio = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(audioBlob);
-            });
+    if (!isFollowup && elements.imageUpload.files.length === 0) {
+        showError('please upload at least one image', elements.imageUpload);
+        return;
+    }
+
+    if (!prompt.trim()) {
+        showError('please enter a prompt', isFollowup ? elements.followupPrompt : elements.systemPrompt);
+        return;
+    }
+
+    let timeInterval;
+    try {
+        isLoading = true;
+        button.disabled = true;
+        document.body.style.cursor = 'wait';
+
+        const startTime = performance.now();
+        button.innerHTML = `
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <span>processing... (0s)</span>
+            </div>
+        `;
+
+        // Update processing time
+        timeInterval = setInterval(() => {
+            const seconds = Math.round((performance.now() - startTime) / 1000);
+            button.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <span>processing... (${seconds}s)</span>
+                </div>
+            `;
+        }, 1000);
+
+        let payload;
+        if (isFollowup) {
+            const previousResponse = elements.responseContent.textContent;
+            const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
             
-            // Create the audio part for the API request
-            const audioPart = {
-                data: base64Audio,
-                mime_type: 'audio/mp3'
-            };
-            
-            // Add the audio data to the request
-            const requestData = {
-                model: 'gemini-2.0-flash',
-                contents: [
-                    { text: 'Process this audio prompt about the image' },
-                    audioPart,
-                    ...getImageParts() // Get existing image parts
+            payload = {
+                contents: {
+                    role: "user",
+                    parts: [{ text: elements.systemPrompt.value + "\n\n" + followupPrompt }],
+                },
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_NONE",
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "BLOCK_NONE",
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_NONE",
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_NONE",
+                    },
                 ],
-                temperature: parseFloat(elements.temperatureInput.value)
+                generationConfig: {
+                    temperature: parseFloat(elements.temperatureInput.value),
+                },
             };
-            
-            // Send the request
-            elements.submitBtn.disabled = true;
-            elements.submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-            
-            if (!response.ok) throw new Error('API request failed');
-            
-            const data = await response.json();
-            displayResponse(data);
-        } catch (error) {
-            console.error('Error processing audio:', error);
-            alert('Error processing audio recording. Please try again.');
-        } finally {
-            elements.submitBtn.disabled = false;
-            elements.submitBtn.innerHTML = 'submit';
+        } else {
+            const selectedPreset = localStorage.getItem("selected_prompt_preset");
+            const files = Array.from(elements.imageUpload.files);
+
+            // Convert all files to base64
+            const base64Images = await Promise.all(
+                files.map((file) => fileToBase64(file))
+            );
+
+            const inlineDataArray = base64Images.map((base64Image, index) => ({
+                inlineData: {
+                    mimeType: files[index].type,
+                    data: base64Image.split(",")[1],
+                },
+            }));
+
+            // Handle audio if present
+            if (selectedPreset === "audio prompt" && audioBlob) {
+                try {
+                    const base64Audio = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(audioBlob);
+                    });
+
+                    // Add audio to the payload
+                    inlineDataArray.push({
+                        inlineData: {
+                            mimeType: 'audio/mp3',
+                            data: base64Audio
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error processing audio:', error);
+                    showError('Error processing audio recording', button);
+                    return;
+                }
+            }
+
+            payload = {
+                contents: [
+                    {
+                        parts: [{ text: prompt }, ...inlineDataArray],
+                    },
+                ],
+                safetySettings: [
+                    {
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_NONE",
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "BLOCK_NONE",
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_NONE",
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_NONE",
+                    },
+                ],
+                generationConfig: {
+                    temperature: parseFloat(elements.temperatureInput.value),
+                },
+            };
         }
-    } else {
-        // Proceed with normal submission
-        submitToAPI();
+
+        console.log("Sending payload:", JSON.stringify(payload, null, 2));
+        const data = await makeApiCall(payload);
+        console.log("API response:", data);
+
+        if (data.candidates && data.candidates.length > 0) {
+            const rawResponse = data.candidates[0].content.parts[0].text;
+            // Sanitize and format the response
+            const sanitizedResponse = DOMPurify.sanitize(rawResponse);
+            const formattedResponse = marked.parse(sanitizedResponse);
+
+            elements.responseContent.innerHTML = formattedResponse;
+            elements.responseContent.closest('.response-section').classList.add('visible');
+            
+            // Store the response in conversation history
+            handleNewAssistantResponse(rawResponse);
+            
+            // Add history entry
+            addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
+        } else {
+            throw new Error("no candidates in api response");
+        }
+    } catch (error) {
+        console.error("detailed error:", error);
+        showError(error.message || 'an error occurred while processing your request', button);
+    } finally {
+        if (timeInterval) {
+            clearInterval(timeInterval);
+        }
+        isLoading = false;
+        button.disabled = false;
+        document.body.style.cursor = 'default';
+        button.innerHTML = isFollowup ? "send follow-up" : "get response";
+        if (isFollowup) elements.followupPrompt.value = "";
     }
 }
 
-// Helper function to get image parts from the preview
-function getImageParts() {
-    const imageParts = [];
-    const previewImages = document.querySelectorAll('.preview-image');
-    
-    previewImages.forEach(img => {
-        if (img.src.startsWith('data:image')) {
-            const [header, base64] = img.src.split(',');
-            const mime = header.match(/data:(.*);base64/)[1];
-            imageParts.push({
-                data: base64,
-                mime_type: mime
-            });
-        }
-    });
-    
-    return imageParts;
-}
-
 // Update the submit button event listener
-elements.submitBtn.removeEventListener('click', submitToAPI);
-elements.submitBtn.addEventListener('click', handleSubmit);
+elements.submitBtn.addEventListener('click', () => handleSubmit(false));
+elements.followupBtn.addEventListener('click', () => handleSubmit(true));
 
 // Add copy functionality
 function addCopyButton() {
@@ -1631,9 +1730,6 @@ function initializeEventListeners() {
       showToast(`${validFilesCount} images uploaded`);
     }
   });
-
-  elements.submitBtn.addEventListener("click", () => handleSubmit(false));
-  elements.followupBtn.addEventListener("click", () => handleSubmit(true));
 
   // Add event listener for file input change
   elements.imageUpload.addEventListener("change", (e) => {
