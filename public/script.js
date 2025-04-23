@@ -108,6 +108,7 @@ const elements = {
   audioFileInput: document.getElementById("audio-file-input"),
   audioFileInputButton: document.querySelector(".audio-file-input-button"),
   audioDropArea: document.getElementById("audio-drop-area"),
+  stopRecordingContainer: document.getElementById("stop-recording-container"),
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -2402,7 +2403,11 @@ async function startRecording() {
         const liveCanvasCtx = liveCanvas.getContext("2d");
         liveCanvas.style.display = 'block'; // Show LIVE waveform
         liveCanvasCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
-        elements.audioPreviewContainer.style.display = 'none'; // Hide static player preview
+        
+        // Hide static player preview and show recording controls
+        elements.audioPreviewContainer.style.display = 'none';
+        elements.stopRecordingContainer.style.display = 'flex';
+        elements.startRecording.style.display = 'none';
         
         mediaRecorder.ondataavailable = (event) => {
             audioChunks.push(event.data);
@@ -2418,9 +2423,10 @@ async function startRecording() {
             // Generate static waveform and show player
             await generateAndDrawStaticWaveform(audioBlob); // Wait for drawing
             
-            elements.audioPreviewContainer.style.display = 'flex'; // Show custom player
+            // Hide recording controls and show the player
+            elements.audioPreviewContainer.style.display = 'flex';
             elements.startRecording.style.display = 'block';
-            elements.stopRecording.style.display = 'none';
+            elements.stopRecordingContainer.style.display = 'none';
             
             // Stop LIVE waveform animation and hide LIVE canvas
             stopWaveformAnimation();
@@ -2430,32 +2436,33 @@ async function startRecording() {
 
         audioChunks = [];
         mediaRecorder.start();
-        elements.startRecording.style.display = 'none';
-        elements.stopRecording.style.display = 'block';
         drawWaveform(); // Start LIVE waveform
         
     } catch (err) {
         console.error('Error accessing microphone:', err);
         alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
         stopWaveformAnimation();
-        elements.audioWaveformCanvas.style.display = 'none'; 
+        elements.audioWaveformCanvas.style.display = 'none';
+        elements.stopRecordingContainer.style.display = 'none';
+        elements.startRecording.style.display = 'block';
     }
 }
 
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop(); 
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
     }
     // Stop waveform animation and hide canvas
     stopWaveformAnimation();
-    elements.audioWaveformCanvas.style.display = 'none'; 
+    elements.audioWaveformCanvas.style.display = 'none';
+    elements.stopRecordingContainer.style.display = 'none';
+    elements.startRecording.style.display = 'block';
 }
 
 function deleteRecording() {
     audioBlob = null;
     audioChunks = [];
-    elements.audioPlayer.src = '';
-    elements.audioPreview.style.display = 'none';
     
     // Stop animation, clear LIVE waveform, hide LIVE canvas
     stopWaveformAnimation();
@@ -2467,6 +2474,8 @@ function deleteRecording() {
     const staticCtx = staticCanvas.getContext("2d");
     staticCtx.clearRect(0, 0, staticCanvas.width, staticCanvas.height);
     elements.audioPreviewContainer.style.display = 'none';
+    elements.stopRecordingContainer.style.display = 'none';
+    elements.startRecording.style.display = 'block';
     
     // Reset hidden audio player
     elements.audioPlayer.src = '';
@@ -2703,6 +2712,8 @@ async function processAudioFile(file) {
     // Show the audio player and hide the live waveform
     elements.audioPreviewContainer.style.display = 'flex';
     elements.audioWaveformCanvas.style.display = 'none';
+    elements.stopRecordingContainer.style.display = 'none';
+    elements.startRecording.style.display = 'block';
     
     // Ensure play button shows "Play"
     resetPlayButton();

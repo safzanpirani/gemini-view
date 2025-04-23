@@ -1193,21 +1193,19 @@ input:focus, textarea:focus {
     border-radius: 4px;
 }
 
-/* Audio recorder styles */
+/* Audio recorder styles - updated to match image upload */
 .audio-recorder {
     margin-top: 20px;
-    padding: 20px;
-    border: 2px dashed var(--border-color);
+    padding: 0;
     border-radius: 12px;
-    background-color: var(--secondary-color);
+    background-color: transparent;
 }
 
-.audio-controls {
+.audio-controls-header {
     display: flex;
-    gap: 12px;
     justify-content: center;
+    width: 100%;
     margin-bottom: 16px;
-    flex-wrap: wrap;
 }
 
 .audio-control-btn {
@@ -1234,26 +1232,63 @@ input:focus, textarea:focus {
     font-size: 16px;
 }
 
-.audio-preview {
+/* Recording in progress indicator */
+.recording-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin: 16px 0;
+    padding: 16px;
+    border-radius: 8px;
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.recording-icon {
+    color: #dc3545;
+    animation: pulse 1.5s infinite;
+}
+
+/* Audio preview header */
+.audio-preview-header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+/* Update the existing audio player container */
+.audio-player-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
     margin-top: 16px;
-}
-
-.audio-preview audio {
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--secondary-color);
     width: 100%;
-    max-width: 400px;
-    margin-bottom: 8px;
 }
 
-#delete-recording {
-    background-color: #dc3545;
-}
-
-#delete-recording:hover {
-    background-color: #c82333;
+/* Make the waveform canvas match the image preview style */
+.waveform-canvas {
+    width: 100%;
+    max-width: 100%;
+    height: 60px;
+    background-color: var(--bg-color);
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
 }
 
 /* Audio file input styles */
