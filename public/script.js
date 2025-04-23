@@ -2268,7 +2268,7 @@ function drawStaticWaveform(canvas, audioBuffer) {
     canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
     canvasCtx.fillRect(0, 0, width, height);
 
-    if (!audioBuffer) { // Handle case where buffer is null
+    if (!audioBuffer) { 
         console.error("Cannot draw static waveform: audioBuffer is null");
         return;
     }
@@ -2277,37 +2277,60 @@ function drawStaticWaveform(canvas, audioBuffer) {
     const step = Math.ceil(data.length / width);
     const amp = height / 2;
     
-    // Set line style
-    canvasCtx.lineWidth = 1; 
-    canvasCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
-    canvasCtx.beginPath();
+    // Calculate overall maximum amplitude to scale everything proportionally
+    let maxAmplitude = 0;
+    for (let i = 0; i < data.length; i++) {
+        const absValue = Math.abs(data[i]);
+        if (absValue > maxAmplitude) {
+            maxAmplitude = absValue;
+        }
+    }
     
-    let currentX = 0;
-
-    for (let i = 0; i < data.length; i += step) {
-        let min = 1.0;
-        let max = -1.0;
-        // Calculate min/max for the segment
-        for (let j = 0; j < step && i + j < data.length; j++) {
-            const datum = data[i + j];
-            if (datum < min) min = datum;
-            if (datum > max) max = datum;
+    // If maxAmplitude is too small, boost it to ensure visibility
+    if (maxAmplitude < 0.01) maxAmplitude = 0.01;
+    
+    // Amplification factor: use at least 50% of available height and up to 90%
+    const amplification = Math.min(0.9, Math.max(0.5, 1.0 / maxAmplitude));
+    
+    // Draw the waveform using filled bars for better visibility
+    const barWidth = 2; // Width of each bar
+    const barSpacing = 1; // Spacing between bars
+    const stride = Math.ceil(step * (barWidth + barSpacing) / barWidth); // Adjust step to account for bar width
+    
+    canvasCtx.fillStyle = getComputedStyle(document.body).getPropertyValue('--primary-color').trim();
+    
+    let x = 0;
+    for (let i = 0; i < data.length; i += stride) {
+        // For each segment, calculate peak amplitude
+        let peak = 0;
+        for (let j = 0; j < stride && i + j < data.length; j++) {
+            const absValue = Math.abs(data[i + j]);
+            if (absValue > peak) peak = absValue;
         }
         
-        // Guard against NaN/Infinity in min/max if data is bad
-        min = isFinite(min) ? min : 0;
-        max = isFinite(max) ? max : 0;
-
-        // Draw a vertical line for this segment
-        const yMin = (1 + min) * amp;
-        const yMax = (1 + max) * amp;
+        // Scale the peak & ensure it's visible but not overwhelming
+        const scaledPeak = Math.min(amp * 0.95, peak * amp * amplification);
         
-        canvasCtx.moveTo(currentX, yMin);
-        canvasCtx.lineTo(currentX, yMax);
+        // Draw the bar symmetrically around the center line
+        if (scaledPeak > 0) {
+            canvasCtx.fillRect(
+                x, 
+                amp - scaledPeak,     // Top coordinate (symmetrical around center)
+                barWidth,                    // Width of bar
+                scaledPeak * 2               // Height (doubled to be symmetrical)
+            );
+        }
         
-        currentX++; // Move to the next horizontal pixel
-        if (currentX > width) break; // Stop if we exceed canvas width
+        x += barWidth + barSpacing;
+        if (x >= width) break;
     }
+    
+    // Draw center line
+    canvasCtx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border-color').trim();
+    canvasCtx.lineWidth = 1;
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(0, amp);
+    canvasCtx.lineTo(width, amp);
     canvasCtx.stroke();
 }
 
