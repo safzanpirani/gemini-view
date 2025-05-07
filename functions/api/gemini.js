@@ -40,18 +40,31 @@ export async function onRequest(context) {
   }
 
   const geminiUrl =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent";
 
   try {
-    const payload = await request.json();
-    console.log("Sending payload to Gemini:", JSON.stringify(payload, null, 2));
+    const clientPayload = await request.json();
+
+    // Construct the payload for the Gemini API, adding thinkingBudget configuration
+    const geminiApiPayload = {
+      ...clientPayload,
+      generationConfig: {
+        ...(clientPayload.generationConfig || {}), // Preserve existing generationConfig (e.g., temperature)
+        thinkingConfig: {
+          ...((clientPayload.generationConfig && clientPayload.generationConfig.thinkingConfig) || {}), // Preserve other thinkingConfig settings if any
+          thinkingBudget: 0, // Disable thinking
+        },
+      },
+    };
+
+    console.log("Sending payload to Gemini:", JSON.stringify(geminiApiPayload, null, 2));
 
     const response = await fetch(`${geminiUrl}?key=${env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(geminiApiPayload), // Use the modified payload
     });
 
     const data = await response.json();
