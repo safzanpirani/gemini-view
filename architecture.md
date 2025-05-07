@@ -1,6 +1,6 @@
 # Project Architecture: Gemini Vision
 
-This document outlines the architecture of the Gemini Vision application, a web-based tool for interacting with Google's Gemini 2.0 Flash vision model.
+This document outlines the architecture of the Gemini Vision application, a web-based tool for interacting with Google's Gemini 2.5 Flash vision model.
 
 ## Overview
 
