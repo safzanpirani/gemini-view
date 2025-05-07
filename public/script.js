@@ -1244,6 +1244,32 @@ function updateUploadInfo() {
 
 // ... (Keep Response Switcher, History Feature functions - ensure they adapt if conversationHistory structure was changed by preparePayload) ...
 
+// --- Theme Management ---
+function initTheme() {
+  const savedTheme = localStorage.getItem("theme") || "light";
+  document.body.setAttribute("data-theme", savedTheme);
+  if (elements.themeIcon) { // Check if element exists
+    elements.themeIcon.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+  }
+}
+
+function toggleTheme() {
+  const currentTheme = document.body.getAttribute("data-theme");
+  const newTheme = currentTheme === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", newTheme);
+  if (elements.themeIcon) { // Check if element exists
+    elements.themeIcon.textContent = newTheme === "dark" ? "☀️" : "🌙";
+  }
+  localStorage.setItem("theme", newTheme);
+}
+
+// --- Loading Spinner Helper (if used elsewhere, good to have) ---
+function createLoadingSpinner() {
+  const spinner = document.createElement("div");
+  spinner.className = "loading-spinner"; // Ensure this class is styled in CSS
+  return spinner;
+}
+
 // DOMContentLoaded - MODIFIED (ensure functions are defined before being called if not hoisted)
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
