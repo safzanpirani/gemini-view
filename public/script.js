@@ -1242,47 +1242,194 @@ function updateUploadInfo() {
     if (totalSizeElement) totalSizeElement.textContent = totalSizeText;
 }
 
-// ... (Keep Response Switcher, History Feature functions - ensure they adapt if conversationHistory structure was changed by preparePayload) ...
+// --- History Feature ---
+let historyEntries = []; // Ensure this is declared globally for history functions
+const MAX_HISTORY_ENTRIES = 20;
 
-// --- Theme Management ---
-function initTheme() {
-  const savedTheme = localStorage.getItem("theme") || "light";
-  document.body.setAttribute("data-theme", savedTheme);
-  if (elements.themeIcon) { // Check if element exists
-    elements.themeIcon.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+function loadHistoryEntries() {
+  try {
+    const stored = localStorage.getItem('historyEntries');
+    historyEntries = stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading history:', error);
+    historyEntries = []; // Reset to empty on error
   }
 }
 
-function toggleTheme() {
-  const currentTheme = document.body.getAttribute("data-theme");
-  const newTheme = currentTheme === "dark" ? "light" : "dark";
-  document.body.setAttribute("data-theme", newTheme);
-  if (elements.themeIcon) { // Check if element exists
-    elements.themeIcon.textContent = newTheme === "dark" ? "☀️" : "🌙";
+function saveHistoryEntries() {
+  try {
+    if (historyEntries.length > MAX_HISTORY_ENTRIES) {
+      historyEntries = historyEntries.slice(-MAX_HISTORY_ENTRIES);
+    }
+    localStorage.setItem('historyEntries', JSON.stringify(historyEntries));
+  } catch (e) {
+    console.error('Error saving history (possibly storage full):', e);
+    // Could attempt to remove oldest entries if storage is full, but for now, just log
+    // Example: historyEntries = historyEntries.slice(-Math.floor(historyEntries.length * 0.8));
+    // localStorage.setItem('historyEntries', JSON.stringify(historyEntries));
+    showError('Could not save to history, storage might be full.');
   }
-  localStorage.setItem("theme", newTheme);
 }
 
-// --- Loading Spinner Helper (if used elsewhere, good to have) ---
-function createLoadingSpinner() {
-  const spinner = document.createElement("div");
-  spinner.className = "loading-spinner"; // Ensure this class is styled in CSS
-  return spinner;
+function addHistoryEntry(requestPrompt, filesSummaryHTML, responseText) {
+  // loadHistoryEntries(); // Not strictly needed here if historyEntries is kept in sync by other calls
+  const newEntry = {
+    id: `hist-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    timestamp: new Date().toISOString(),
+    prompt: requestPrompt,
+    filesSummary: filesSummaryHTML, // Store summary instead of full base64 for previews
+    responseText: responseText
+  };
+  historyEntries.push(newEntry);
+  saveHistoryEntries();
+  updateHistoryModal(); // Update modal if it's open
 }
 
-// DOMContentLoaded - MODIFIED (ensure functions are defined before being called if not hoisted)
+function updateHistoryModal() {
+  if (!elements.historyContent) return; // Guard if element isn't found
+  loadHistoryEntries(); // Always load fresh from storage for modal display
+  elements.historyContent.innerHTML = "";
+  
+  if (historyEntries.length === 0) {
+    elements.historyContent.innerHTML = '<div class="no-history">No history entries yet</div>';
+    return;
+  }
+
+  // Display newest first
+  [...historyEntries].reverse().forEach((entry) => {
+    const entryContainer = document.createElement('div');
+    entryContainer.className = 'history-entry';
+    
+    const timestamp = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'No timestamp';
+    
+    entryContainer.innerHTML = 
+      `<div class="entry-header">
+        <strong>${timestamp}</strong>
+      </div>
+      <div class="entry-prompt-header">Prompt:</div>
+      <div class="entry-prompt">${DOMPurify.sanitize(entry.prompt)}</div>
+      ${entry.filesSummary ? `<div class="entry-files-header">Files:</div><div class="entry-files">${entry.filesSummary}</div>` : ''}
+      <div class="entry-response-header">Response:</div>
+      <div class="entry-response">${marked.parse(DOMPurify.sanitize(entry.responseText))}</div>
+      <button class="restore-history-btn" data-history-id="${entry.id}">Restore</button>
+      <hr />`;
+    
+    elements.historyContent.appendChild(entryContainer);
+  });
+
+  // Add event listeners for restore buttons
+  elements.historyContent.querySelectorAll('.restore-history-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const entryId = e.target.getAttribute('data-history-id');
+      const entryToRestore = historyEntries.find(he => he.id === entryId);
+      if (entryToRestore) {
+        elements.systemPrompt.value = entryToRestore.prompt;
+        currentFiles = []; 
+        handleFilePreviews();
+        updateUploadInfo();
+        showToast('Prompt restored. Files need to be re-selected.');
+        if (elements.historyModal) elements.historyModal.classList.remove('visible');
+      }
+    });
+  });
+}
+
+function toggleHistoryModal() {
+  if (!elements.historyModal) return;
+  const isVisible = elements.historyModal.classList.contains('visible');
+  if (isVisible) {
+    elements.historyModal.classList.remove('visible');
+  } else {
+    updateHistoryModal(); // Update content before showing
+    elements.historyModal.classList.add('visible');
+  }
+}
+
+// Ensure this is called in initializeEventListeners for the history toggle button
+// if (elements.globalHistoryToggle) {
+//   elements.globalHistoryToggle.addEventListener('click', toggleHistoryModal);
+// }
+// if (elements.closeHistory) {
+//  elements.closeHistory.addEventListener('click', toggleHistoryModal);
+// }
+// And potentially for clicking outside the modal to close.
+
+// --- Response Switcher Functionality ---
+// (Ensure conversationHistory is distinct from historyEntries; conversationHistory is for current session, historyEntries for persistent storage)
+
+function updateResponseContent() {
+    if (!elements.responseContent) return;
+    if (conversationHistory.length === 0 || currentResponseIndex < 0 || currentResponseIndex >= conversationHistory.length) {
+        elements.responseContent.innerHTML = "";
+        return;
+    }
+    // Assuming conversationHistory stores { role: 'user'/'model', parts: [{text: '...'}] }
+    // And we only display model responses in the main #response-content area
+    const currentEntry = conversationHistory[currentResponseIndex];
+    if (currentEntry.role === 'model' && currentEntry.parts && currentEntry.parts[0] && typeof currentEntry.parts[0].text === 'string') {
+        const rawResponse = currentEntry.parts[0].text;
+        const sanitizedResponse = DOMPurify.sanitize(rawResponse);
+        const formattedResponse = marked.parse(sanitizedResponse);
+        elements.responseContent.innerHTML = formattedResponse;
+    } else {
+        elements.responseContent.innerHTML = ""; // Clear if not a model response or malformed
+    }
+}
+
+function updateResponseSwitcher() {
+    if (!document.getElementById('response-index')) return;
+    const responseIndexElem = document.getElementById('response-index');
+    const modelResponses = conversationHistory.filter(entry => entry.role === 'model');
+    const totalModelResponses = modelResponses.length;
+    
+    // Find the index of the current model response within the filtered list of model responses
+    let currentModelResponseDisplayIndex = 0;
+    if (totalModelResponses > 0 && currentResponseIndex >= 0 && conversationHistory[currentResponseIndex].role === 'model') {
+        let count = 0;
+        for (let i = 0; i <= currentResponseIndex; i++) {
+            if (conversationHistory[i].role === 'model') {
+                count++;
+            }
+        }
+        currentModelResponseDisplayIndex = count;
+    }
+
+    if (totalModelResponses === 0) {
+        responseIndexElem.textContent = '0/0';
+    } else {
+        responseIndexElem.textContent = `${currentModelResponseDisplayIndex}/${totalModelResponses}`;
+    }
+    // Disable/enable buttons based on current index
+    document.getElementById('prev-response').disabled = currentModelResponseDisplayIndex <= 1 && totalModelResponses > 0 ? false : currentModelResponseDisplayIndex <=1;
+    document.getElementById('next-response').disabled = currentModelResponseDisplayIndex >= totalModelResponses;
+}
+
+function handleNewAssistantResponse(rawResponse) { // Called after a new model response is received
+    // The rawResponse is already pushed to conversationHistory by handleSubmit
+    // We just need to find its index if it's not already currentResponseIndex
+    let newModelResponseIndexInConversation = -1;
+    for(let i = conversationHistory.length -1; i >=0; i--) {
+        if(conversationHistory[i].role === 'model') {
+            newModelResponseIndexInConversation = i;
+            break;
+        }
+    }
+    if(newModelResponseIndexInConversation !== -1) {
+        currentResponseIndex = newModelResponseIndexInConversation;
+    }
+
+    updateResponseContent();
+    updateResponseSwitcher();
+    addCopyButton(); // Ensure addCopyButton is defined and works
+}
+
+// DOMContentLoaded - Ensure this is at the end of the script.
 document.addEventListener("DOMContentLoaded", () => {
-  initTheme();
+  initTheme(); 
   initializePromptPresets(); 
-  initializeEventListeners(); // This sets up listeners that might call processAndStoreFiles etc.
-  loadHistoryEntries(); 
+  loadHistoryEntries(); // Definition now added
+  initializeEventListeners(); // Sets up listeners that might call history functions or response switcher 
   updateHistoryModal(); 
   updateUploadInfo(); 
   updateResponseSwitcher(); 
 });
-
-// --- Ensure all functions from the previous large edit are present or accounted for ---
-// Specifically: createLoadingSpinner (if used), all prompt preset functions, 
-// handleMultipleImageFiles (now handleFilePreviews), compressImage, compressImagesIfNeeded,
-// preparePayload, makeApiCall, handleSubmit, addCopyButton, history functions etc.
-// The edit above re-introduces the core file handling and ensures processAndStoreFiles is defined.
