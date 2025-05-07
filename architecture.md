@@ -6,7 +6,7 @@ This document outlines the architecture of the Gemini Vision application, a web-
 
 The application consists of two main parts:
 
-1.  **Frontend:** A static single-page application (SPA) built with HTML, CSS, and JavaScript, served directly by Cloudflare Pages.
+1.  **Frontend:** A static single-page application (SPA) built with HTML, CSS, and JavaScript, served directly by Cloudflare Pages. It allows users to upload images, PDFs, and video files for analysis.
 2.  **Backend:** A Cloudflare Worker function that acts as a secure proxy to the Google Gemini API.
 
 ## Directory Structure
@@ -54,16 +54,20 @@ This directory contains all the static assets for the client-side application.
     *   **Connections**:
         *   Links to `style.css` for styling.
         *   Includes `script.js` for all frontend logic.
+        *   The file input element (`<input type="file">`) is configured via its `accept` attribute to allow image, PDF (`application/pdf`), and various video file types (e.g., `video/mp4`, `video/mpeg`).
         *   Includes external libraries like Font Awesome (for icons), `marked.js` (for rendering Markdown responses from the AI), and `DOMPurify` (for sanitizing HTML to prevent XSS attacks).
-        *   Contains various HTML elements (buttons, text areas, divs) that `script.js` interacts with to create a dynamic user experience (e.g., image upload, prompt input, response display, theme toggle, history modal).
+        *   Contains various HTML elements (buttons, text areas, divs) that `script.js` interacts with to create a dynamic user experience (e.g., file upload, prompt input, response display, theme toggle, history modal).
 *   **`script.js`**:
     *   **Purpose**: Contains all the JavaScript logic for the frontend application. It handles user interactions, manages application state, and communicates with the backend API.
     *   **Connections**:
-        *   Manipulates the DOM elements defined in `index.html` to update the UI (e.g., display image previews, show AI responses, toggle themes).
-        *   Makes HTTP `POST` requests to `/api/gemini` (which is handled by `functions/api/gemini.js`) to send user prompts and images for AI processing.
-        *   Handles responses from the backend, parsing the JSON and displaying the AI's output, potentially rendering it as Markdown using `marked.js` after sanitizing with `DOMPurify`.
-        *   Implements features like prompt presets, conversation history (stored in `localStorage`), image compression, and temperature control.
-        *   References external libraries (`marked.js`, `DOMPurify`).
+        *   Manipulates the DOM elements defined in `index.html` to update the UI.
+        *   Handles file uploads, including validation for allowed image, PDF, and video MIME types.
+        *   Converts uploaded files to base64 encoded strings.
+        *   Image compression logic is applied selectively only to image files; PDF and video files are not compressed.
+        *   Constructs the payload for the backend API. This involves creating a `contents` array for the Gemini API, where each file (image, PDF, or video) becomes an `inlineData` part (containing its base64 data and MIME type), and the user's prompt becomes a `text` part. This structured `parts` array is sent within the `contents` field.
+        *   Makes HTTP `POST` requests to `/api/gemini` (which is handled by `functions/api/gemini.js`) to send the user prompt and file data for AI processing.
+        *   Handles responses from the backend, parsing the JSON and displaying the AI's output.
+        *   Implements features like prompt presets, conversation history (stored in `localStorage`), and temperature control.
 *   **`style.css`**:
     *   **Purpose**: Provides all the CSS rules for styling the HTML elements in `index.html`, ensuring a consistent and responsive user interface.
     *   **Connections**: Linked directly by `index.html`.
@@ -75,11 +79,12 @@ This directory contains the serverless function(s) that act as the backend.
 *   **`gemini.js`**:
     *   **Purpose**: A Cloudflare Worker script that acts as a secure backend proxy between the frontend application and the Google Gemini API.
     *   **Connections**:
-        *   Triggered by HTTP requests to the `/api/gemini` endpoint (as configured implicitly by Cloudflare routing and called by `public/script.js`).
-        *   Reads the `GEMINI_API_KEY` from environment variables (set via `wrangler.toml` secrets, `.dev.vars` file, or by `start-dev.bat` during local development).
-        *   Handles CORS preflight requests (`OPTIONS`) to allow the frontend (served from a different origin during local development or even in production if custom domains are used differently) to make requests.
+        *   Triggered by HTTP requests to the `/api/gemini` endpoint.
+        *   Expects the incoming JSON payload from `public/script.js` to contain a `contents` field formatted according to Gemini API requirements. This `contents` field should include an array of `parts`, where files are represented as `inlineData` (with base64 `data` and `mimeType`) and prompts as `text`.
+        *   Reads the `GEMINI_API_KEY` from environment variables.
+        *   Handles CORS preflight requests.
         *   Validates that the request method is `POST`.
-        *   Receives a JSON payload (containing the prompt and image data) from `public/script.js`.
+        *   Receives a JSON payload (containing the prompt and file data) from `public/script.js`.
         *   Forwards this payload in a `POST` request to the official Google Gemini API endpoint (`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`), including the API key for authentication.
         *   Receives the JSON response from the Google Gemini API and forwards it back to the `public/script.js` on the frontend.
         *   Provides error handling and logging.
@@ -94,15 +99,15 @@ This directory contains the serverless function(s) that act as the backend.
 
 1.  **User Interaction (Frontend - `index.html`, `script.js`)**:
     *   User opens the web page (`index.html`).
-    *   User selects images and types a prompt in the UI.
-    *   `script.js` captures this input, potentially compresses images, and converts them to base64.
+    *   User selects images, PDFs, or video files and types a prompt in the UI.
+    *   `script.js` captures this input, validates file types, converts files to base64 (compressing only images if applicable).
 2.  **API Request (Frontend to Backend - `script.js` to `functions/api/gemini.js`)**:
-    *   `script.js` constructs a JSON payload with the prompt, image data, and selected temperature.
-    *   `script.js` sends an asynchronous `POST` request to `/api/gemini` (the Cloudflare Worker).
+    *   `script.js` constructs a JSON payload. The core of this is the `contents` array, containing a `parts` array. Each part is either `inlineData` for a file (with `mimeType` and base64 `data`) or `text` for the prompt.
+    *   `script.js` sends an asynchronous `POST` request to `/api/gemini` with this payload.
 3.  **Proxy to Google Gemini API (Backend - `functions/api/gemini.js`)**:
-    *   The Cloudflare Worker (`gemini.js`) receives the request.
-    *   It retrieves the `GEMINI_API_KEY` from its environment.
-    *   It forwards the payload in a `POST` request to the Google Gemini API, including the API key.
+    *   The Cloudflare Worker (`gemini.js`) receives the request with the pre-formatted `contents`.
+    *   It retrieves the `GEMINI_API_KEY`.
+    *   It merges the client-provided `generationConfig` (like temperature) with the server-side `thinkingConfig` (to disable thinking) and forwards the payload (including the `contents` and final `generationConfig`) in a `POST` request to the Google Gemini API.
 4.  **AI Processing (Google Gemini API)**:
     *   Google's Gemini model processes the images and prompt.
     *   It returns a JSON response to the Cloudflare Worker.
@@ -114,4 +119,10 @@ This directory contains the serverless function(s) that act as the backend.
     *   It parses the response, sanitizes any HTML content (using `DOMPurify`), renders Markdown (using `marked.js`), and updates the appropriate DOM elements in `index.html` to display the AI's analysis to the user.
     *   Conversation history is updated in `localStorage`.
 
-This architecture leverages Cloudflare Pages for hosting the static frontend and Cloudflare Workers for a lightweight, serverless backend, providing a scalable and secure way to interact with the powerful Google Gemini API. 
+This architecture leverages Cloudflare Pages for hosting the static frontend and Cloudflare Workers for a lightweight, serverless backend, providing a scalable and secure way to interact with the powerful Google Gemini API.
+
+## Limitations
+
+*   **File Size for PDF/Video (Inline Data):** Current support for PDF and video files relies on sending them as base64 encoded inline data. This approach is subject to the request size limits of Cloudflare Workers (e.g., 1MB on the free tier, potentially higher on paid plans but requires configuration) and practical limits for API request sizes. Very large PDF or video files might exceed these limits and fail to process. Future enhancements could involve integrating the Google Gemini File API for more robust handling of large files, which would require significant changes to the file upload and backend processing logic.
+*   **Video Processing Details:** The Gemini API samples videos at 1 frame per second for visual analysis and processes audio at 1Kbps. This might affect the detail captured from fast-moving scenes or complex audio.
+*   **Single Video per Prompt:** For optimal results with video, the Gemini API documentation suggests using only one video per prompt request. The current UI allows multiple file uploads, but users should be mindful of this when including videos. 

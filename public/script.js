@@ -7,6 +7,10 @@ let conversationHistory = [];
 // Response Switcher functionality
 let currentResponseIndex = -1;
 
+// Global state for managing uploaded files
+let currentFiles = []; // Array of { id: number, originalFile: File, base64Data?: string, mimeType?: string, compressed?: boolean }
+let fileIdCounter = 0;
+
 // Enhanced error handling
 function showError(message, targetElement) {
   const errorDiv = document.createElement('div');
@@ -18,7 +22,18 @@ function showError(message, targetElement) {
   setTimeout(() => errorDiv.remove(), 5000);
   
   if (targetElement) {
-    targetElement.parentNode.insertBefore(errorDiv, targetElement.nextSibling);
+    // Ensure targetElement is part of the DOM before inserting
+    if (document.body.contains(targetElement)) {
+        targetElement.parentNode.insertBefore(errorDiv, targetElement.nextSibling);
+    } else {
+        // Fallback if targetElement is not in DOM (e.g., detached)
+        const container = document.querySelector('.upload-section') || document.querySelector('.container');
+        if (container) {
+            container.appendChild(errorDiv);
+        } else {
+            document.body.appendChild(errorDiv); // Absolute fallback
+        }
+    }
   } else {
     // Default positioning
     const container = document.querySelector('.container');
@@ -57,13 +72,16 @@ function showToast(message) {
   }, 3000);
 }
 
-// Image validation
-function validateImage(file) {
-  if (!file.type.startsWith('image/')) {
-    showError('file must be an image', elements.imageUpload);
+// File validation
+function validateFile(file) { // Renamed from validateImage and updated
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    showError(
+      `File type not allowed: ${file.name} (${file.type}). Please upload images, PDFs, or supported video formats.`,
+      elements.imageUpload,
+    );
     return false;
   }
-  
+  // Add size validation if needed in the future (e.g., per file or total)
   return true;
 }
 
@@ -93,7 +111,31 @@ const elements = {
   presetButtons: document.querySelector(".preset-buttons"),
   factoryReset: document.getElementById("factory-reset"),
   fileInputButton: document.querySelector(".file-input-button"),
+  uploadSection: document.querySelector(".upload-section"), // Added for showError context
+  globalHistoryToggle: document.getElementById("global-history-toggle"), 
+  historyModal: document.getElementById("history-modal"), 
+  closeHistory: document.getElementById("close-history"), 
+  historyContent: document.getElementById("history-content"),
+  clearAllFilesButton: document.getElementById("clear-all-images"),
+  uploadSpinner: document.getElementById("upload-spinner"),
 };
+
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'video/mp4',
+  'video/mpeg',
+  'video/mov',
+  'video/avi',
+  'video/x-flv',
+  'video/mpg',
+  'video/webm',
+  'video/wmv',
+  'video/3gpp',
+];
 
 const DEFAULT_PROMPT_PRESETS = {
   "calorie guesser": {
@@ -1022,7 +1064,7 @@ document.addEventListener("paste", async (event) => {
   // Add all pasted images
   for (const item of validImageItems) {
     const blob = item.getAsFile();
-    if (blob && validateImage(blob)) {
+    if (blob && validateFile(blob)) {
       dataTransfer.items.add(blob);
     }
   }
@@ -1273,112 +1315,157 @@ function fileToBase64(file) {
   });
 }
 
-// New functions to compress images if total size exceeds 5MB
-async function compressImage(file) {
+// Modified image compression functions
+async function compressImage(imageFile) { // Takes a File object
+  // Only compress if it's an image
+  if (!imageFile.type.startsWith('image/')) {
+    console.log(`Skipping compression for non-image file: ${imageFile.name}`);
+    // For non-images, we still need to return a structure compatible with what compressImagesIfNeeded expects
+    return { file: imageFile, compressed: false, base64: await fileToBase64(imageFile), mimeType: imageFile.type };
+  }
+
+  console.log(`Attempting to compress image: ${imageFile.name}, size: ${imageFile.size} bytes`);
   const COMPRESSION_QUALITY = 0.7;
-  const RESIZE_RATIO = 0.75; // 75% of original dimensions
-  
-  const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement("canvas");
-  
-  // If file is large, resize to 75% dimensions first
-  if (file.size > 1024 * 1024) { // If larger than 1MB
-    canvas.width = bitmap.width * RESIZE_RATIO;
-    canvas.height = bitmap.height * RESIZE_RATIO;
-  } else {
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+  const RESIZE_RATIO = 0.75; 
+  let targetFile = imageFile;
+  let didCompress = false;
+
+  try {
+    const bitmap = await createImageBitmap(imageFile);
+    const canvas = document.createElement("canvas");
+
+    if (imageFile.size > 1024 * 1024) { // If larger than 1MB, resize
+      canvas.width = bitmap.width * RESIZE_RATIO;
+      canvas.height = bitmap.height * RESIZE_RATIO;
+    } else {
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+    }
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/webp', COMPRESSION_QUALITY);
+    });
+
+    if (blob && blob.size < imageFile.size) {
+      targetFile = new File([blob], imageFile.name.replace(/\.[^/.]+$/, ".webp"), { type: "image/webp" });
+      didCompress = true;
+      console.log(`Successfully compressed ${imageFile.name} to ${targetFile.name} (new size: ${targetFile.size} bytes)`);
+    } else {
+      console.log(`Compression did not reduce size for ${imageFile.name} or failed. Using original.`);
+      didCompress = false; // Explicitly false
+    }
+  } catch (error) {
+    console.error(`Error compressing ${imageFile.name}:`, error);
+    showError(`Could not compress ${imageFile.name}. Using original.`, elements.imageUpload);
+    didCompress = false; // Explicitly false on error
+    targetFile = imageFile; // Ensure targetFile is the original on error
   }
   
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), { type: "image/webp" });
-        newFile.compressed = true;
-        resolve(newFile);
-      } else {
-        resolve(file);
-      }
-    }, 'image/webp', COMPRESSION_QUALITY);
-  });
+  const base64 = await fileToBase64(targetFile);
+  return { file: targetFile, compressed: didCompress, base64: base64, mimeType: targetFile.type };
 }
 
 async function compressImagesIfNeeded() {
-  const THRESHOLD = 5 * 1024 * 1024; // 5MB
-  let files = Array.from(elements.imageUpload.files);
-  let totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  if (totalSize <= THRESHOLD) return;
-  let indices = files.map((f, i) => i);
-  indices.sort((a, b) => files[b].size - files[a].size);
-  for (let i of indices) {
-    if (totalSize <= THRESHOLD) break;
-    if (!files[i].compressed) {
-      const originalSize = files[i].size;
-      const compressedFile = await compressImage(files[i]);
-      files[i] = compressedFile;
-      totalSize = totalSize - originalSize + compressedFile.size;
+  if (currentFiles.length === 0) return;
+  elements.uploadSpinner.classList.remove("hidden");
+
+  const THRESHOLD = 5 * 1024 * 1024; // 5MB total for all files
+  let totalSize = currentFiles.reduce((sum, f) => sum + f.originalFile.size, 0);
+
+  const processingPromises = currentFiles.map(async (fileEntry) => {
+    if (fileEntry.originalFile.type.startsWith('image/') && totalSize > THRESHOLD && !fileEntry.compressed) {
+      // Only compress images if total size exceeds threshold and this image isn't already marked as compressed
+      try {
+        const { file: processedFile, compressed, base64: processedBase64, mimeType: processedMimeType } = await compressImage(fileEntry.originalFile);
+        fileEntry.base64Data = processedBase64; 
+        fileEntry.mimeType = processedMimeType; 
+        fileEntry.compressed = compressed; // Mark as compressed (or attempted)
+        if (compressed) {
+             // Update totalSize if compression happened and reduced size
+            totalSize = totalSize - fileEntry.originalFile.size + processedFile.size;
+        }
+      } catch (error) {
+        showError(`Could not process ${fileEntry.originalFile.name}. It might be skipped.`, elements.imageUpload);
+        // Ensure base64Data is from original if compression failed but was needed
+         if (!fileEntry.base64Data) fileEntry.base64Data = await fileToBase64(fileEntry.originalFile);
+         fileEntry.compressed = false; // Explicitly mark as not compressed
+      }
+    } else if (!fileEntry.base64Data) {
+      // For non-images or images not needing compression, ensure base64Data is populated if not already
+      try {
+        fileEntry.base64Data = await fileToBase64(fileEntry.originalFile);
+      } catch (error) {
+        showError(`Error reading ${fileEntry.originalFile.name}. It might be skipped.`, elements.imageUpload);
+        // Mark file as unusable by removing base64Data or the entry itself
+        fileEntry.base64Data = null; 
+      }
     }
-  }
-  const dataTransfer = new DataTransfer();
-  files.forEach(file => dataTransfer.items.add(file));
-  elements.imageUpload.files = dataTransfer.files;
+    return fileEntry;
+  });
+
+  currentFiles = (await Promise.all(processingPromises)).filter(f => f.base64Data); // Keep only files successfully processed
+
+  elements.uploadSpinner.classList.add("hidden");
+  handleFilePreviews(); // Re-render previews to show compression icons
+  updateUploadInfo(); // Update info after compression attempts
 }
 
-async function preparePayload(prompt, base64Image, isFollowup = false) {
-  const file = elements.imageUpload.files[0];
-
-  if (isFollowup && conversationHistory.length > 0) {
-    conversationHistory.push({
-      role: "user",
-      parts: [{ text: prompt }],
-    });
-    return {
-      contents: conversationHistory,
-      generationConfig: {
-        temperature: parseFloat(elements.temperatureInput.value),
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-      },
-    };
-  } else {
-    return {
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: file.type,
-                data: base64Image.split(",")[1],
-              },
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: parseFloat(elements.temperatureInput.value),
-      },
-    };
+async function preparePayload(promptText, isFollowup = false) {
+  if (!isFollowup && currentFiles.length > 0) { // Only call if there are files and not a followup
+    await compressImagesIfNeeded(); // Ensure files are processed (images compressed, others base64'd)
   }
+
+  const parts = [];
+
+  // Add file parts from currentFiles
+  currentFiles.forEach(fileEntry => {
+    if (fileEntry.base64Data && fileEntry.mimeType) {
+      // Remove the "data:mime/type;base64," prefix
+      const base64String = fileEntry.base64Data.substring(fileEntry.base64Data.indexOf(',') + 1);
+      parts.push({
+        inlineData: {
+          mimeType: fileEntry.mimeType,
+          data: base64String,
+        },
+      });
+    } else {
+      console.warn(`Skipping file due to missing data: ${fileEntry.originalFile ? fileEntry.originalFile.name : 'Unknown file'}`);
+      // showError is called in compressImagesIfNeeded or processAndStoreFiles if there's an issue
+    }
+  });
+
+  // Add text prompt part
+  parts.push({ text: promptText });
+
+  const payload = {
+    contents: [{ parts }], // Gemini API expects contents to be an array with one object containing parts
+    generationConfig: {
+      temperature: parseFloat(elements.temperatureInput.value),
+      // The backend will add thinkingConfig: { thinkingBudget: 0 }
+    },
+  };
+
+  // For follow-ups, the Gemini API expects the history to be part of the 'contents' array,
+  // with alternating user/model roles.
+  // The current conversationHistory structure might need adjustment if it's not already like that.
+  // Assuming conversationHistory stores {role: 'user'/'model', parts: [{text: '...'}]}
+  if (isFollowup && conversationHistory.length > 0) {
+     // The current prompt is the latest user message.
+     // The existing conversationHistory should be prepended.
+     // Let's assume conversationHistory has the right format.
+    payload.contents = [...conversationHistory, { role: "user", parts: parts }];
+    // Remove .history if not used by Gemini API in this structure
+    // delete payload.history; 
+  } else if (isFollowup) {
+      // Followup but no history, send current prompt as user part
+      payload.contents = [{ role: "user", parts: parts }];
+  }
+
+
+  return payload;
 }
 
 // API interaction
@@ -1441,15 +1528,15 @@ function factoryReset() {
 // Enhanced submit handling
 async function handleSubmit(isFollowup = false) {
   const button = isFollowup ? elements.followupBtn : elements.submitBtn;
-  const prompt = isFollowup ? elements.followupPrompt.value : elements.systemPrompt.value;
+  const promptText = isFollowup ? elements.followupPrompt.value.trim() : elements.systemPrompt.value.trim();
 
-  if (!isFollowup && elements.imageUpload.files.length === 0) {
-    showError('please upload at least one image', elements.imageUpload);
+  if (!isFollowup && currentFiles.length === 0) { // Check currentFiles
+    showError('Please upload at least one file (image, PDF, or video).', elements.imageUpload);
     return;
   }
 
-  if (!prompt.trim()) {
-    showError('please enter a prompt', isFollowup ? elements.followupPrompt : elements.systemPrompt);
+  if (!promptText) {
+    showError('Please enter a prompt.', isFollowup ? elements.followupPrompt : elements.systemPrompt);
     return;
   }
 
@@ -1460,125 +1547,82 @@ async function handleSubmit(isFollowup = false) {
     document.body.style.cursor = 'wait';
 
     const startTime = performance.now();
+    let loadingMessage = isFollowup ? 'Sending...' : 'Processing files...';
     button.innerHTML = `
       <div class="loading-state">
         <div class="loading-spinner"></div>
-        <span>processing... (0s)</span>
+        <span>${loadingMessage} (0s)</span>
       </div>
     `;
-
-    // Update processing time
+    
     timeInterval = setInterval(() => {
       const seconds = Math.round((performance.now() - startTime) / 1000);
-      button.innerHTML = `
-        <div class="loading-state">
-          <div class="loading-spinner"></div>
-          <span>processing... (${seconds}s)</span>
-        </div>
-      `;
+      const currentLoadingMessageSpan = button.querySelector('.loading-state span');
+      if(currentLoadingMessageSpan) currentLoadingMessageSpan.textContent = `${loadingMessage} (${seconds}s)`;
     }, 1000);
 
-    let payload;
-    if (isFollowup) {
-      const previousResponse = elements.responseContent.textContent;
-      const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
-      
-      payload = {
-        contents: {
-          role: "user",
-          parts: [{ text: elements.systemPrompt.value + "\n\n" + followupPrompt }],
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          temperature: parseFloat(elements.temperatureInput.value),
-        },
-      };
-    } else {
-      const files = Array.from(elements.imageUpload.files);
-      if (files.length === 0) {
-        showError('please upload at least one image', elements.imageUpload);
-        return;
-      }
-
-      // Convert all files to base64
-      const base64Images = await Promise.all(
-        files.map((file) => fileToBase64(file)),
-      );
-
-      const inlineDataArray = base64Images.map((base64Image, index) => ({
-        inlineData: {
-          mimeType: files[index].type,
-          data: base64Image.split(",")[1],
-        },
-      }));
-
-      payload = {
-        contents: [
-          {
-            parts: [{ text: prompt }, ...inlineDataArray],
-          },
-        ],
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            threshold: "BLOCK_NONE",
-          },
-          {
-            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-            threshold: "BLOCK_NONE",
-          },
-        ],
-        generationConfig: {
-          temperature: parseFloat(elements.temperatureInput.value),
-        },
-      };
+    // Prepare the payload using the new function
+    const payload = await preparePayload(promptText, isFollowup);
+    
+    // Update loading message after payload prep (especially for non-followups)
+    if(!isFollowup) {
+        loadingMessage = 'Getting response...';
+        const currentLoadingMessageSpan = button.querySelector('.loading-state span');
+        if(currentLoadingMessageSpan) currentLoadingMessageSpan.textContent = `${loadingMessage} (${Math.round((performance.now() - startTime) / 1000)}s)`;
     }
+
 
     console.log("Sending payload:", JSON.stringify(payload, null, 2));
     const data = await makeApiCall(payload);
     console.log("API response:", data);
 
-    if (data.candidates && data.candidates.length > 0) {
+    if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
       const rawResponse = data.candidates[0].content.parts[0].text;
-      // Sanitize and format the response
       const sanitizedResponse = DOMPurify.sanitize(rawResponse);
       const formattedResponse = marked.parse(sanitizedResponse);
 
       elements.responseContent.innerHTML = formattedResponse;
       elements.responseContent.closest('.response-section').classList.add('visible');
       
-      // Store the response in conversation history
-      handleNewAssistantResponse(rawResponse);
+      // Update conversation history
+      if (!isFollowup) { // For new submissions, clear old history or start new
+        conversationHistory = []; 
+         // Add user's initial prompt and file references (if any) to history
+        const userPartsForHistory = [];
+        currentFiles.forEach(f => userPartsForHistory.push({ inlineData: { mimeType: f.mimeType, data: '[file_reference]' }})); // Don't store full base64 in history
+        userPartsForHistory.push({ text: promptText });
+        conversationHistory.push({ role: "user", parts: userPartsForHistory });
+      } else {
+         // For followups, the prompt was already added by preparePayload if history was used
+         // Or, if preparePayload didn't add it because history was empty, add current user prompt
+         if(payload.contents.length === 1 && payload.contents[0].role === 'user') {
+            // This means preparePayload made a single user entry (no prior history)
+            // We need to ensure it's captured for the *next* followup
+         }
+      }
+      conversationHistory.push({ role: "model", parts: [{ text: rawResponse }] });
+
+      handleNewAssistantResponse(rawResponse); // This seems to handle UI for response switcher
       
-      // Add history entry: record current prompt, preview images HTML, and raw response
-      addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
+      const imagePreviewsHTML = currentFiles.map(f => {
+          if (f.mimeType.startsWith("image/")) return `<img src="${f.base64Data.substring(0,100)}..." alt="${f.originalFile.name}" style="width:50px; height:auto; margin-right:5px;">`; // Truncate for history
+          if (f.mimeType === "application/pdf") return `<i class="fas fa-file-pdf"></i> ${f.originalFile.name}`;
+          if (f.mimeType.startsWith("video/")) return `<i class="fas fa-file-video"></i> ${f.originalFile.name}`;
+          return `<span>${f.originalFile.name}</span>`;
+      }).join(" ");
+
+      addHistoryEntry(promptText, imagePreviewsHTML, rawResponse);
     } else {
-      throw new Error("no candidates in api response");
+      let errorMessage = "No valid response from API.";
+      if (data.promptFeedback && data.promptFeedback.blockReason) {
+          errorMessage = `Request blocked: ${data.promptFeedback.blockReason}.`;
+          if (data.promptFeedback.safetyRatings) {
+              errorMessage += ` Details: ${JSON.stringify(data.promptFeedback.safetyRatings)}`;
+          }
+      } else if (data.error) {
+          errorMessage = `API Error: ${data.error.message || JSON.stringify(data.error)}`;
+      }
+      throw new Error(errorMessage);
     }
   } catch (error) {
     console.error("detailed error:", error);
@@ -1629,49 +1673,20 @@ function initializeEventListeners() {
 
   elements.factoryReset.addEventListener("click", factoryReset);
 
+  // Drag and Drop listeners
   elements.dragDropArea.addEventListener("dragover", (e) => {
     e.preventDefault();
     elements.dragDropArea.classList.add("dragover");
   });
-
   elements.dragDropArea.addEventListener("dragleave", () => {
     elements.dragDropArea.classList.remove("dragover");
   });
-
   elements.dragDropArea.addEventListener("drop", (e) => {
     e.preventDefault();
     elements.dragDropArea.classList.remove("dragover");
-    
-    // Create a new DataTransfer object
-    const dataTransfer = new DataTransfer();
-    
-    // Add existing files if any
-    if (elements.imageUpload.files.length > 0) {
-      Array.from(elements.imageUpload.files).forEach(file => {
-        dataTransfer.items.add(file);
-      });
-    }
-    
-    // Add the new dropped files
     const files = e.dataTransfer.files;
-    let validFilesCount = 0;
-    Array.from(files).forEach(file => {
-      if (validateImage(file)) {
-        dataTransfer.items.add(file);
-        validFilesCount++;
-      }
-    });
-    
-    // Update the input's files
-    elements.imageUpload.files = dataTransfer.files;
-    
-    handleMultipleImageFiles(dataTransfer.files);
-    
-    // Show toast notification for dropped images
-    if (validFilesCount === 1) {
-      showToast("1 image uploaded");
-    } else if (validFilesCount > 1) {
-      showToast(`${validFilesCount} images uploaded`);
+    if (files.length > 0) {
+      processAndStoreFiles(files); // Use new processing function
     }
   });
 
@@ -1681,13 +1696,8 @@ function initializeEventListeners() {
   // Add event listener for file input change
   elements.imageUpload.addEventListener("change", (e) => {
     const files = e.target.files;
-    handleMultipleImageFiles(files);
-    
-    // Show toast notification for file selection
-    if (files.length === 1) {
-      showToast("1 image uploaded");
-    } else if (files.length > 1) {
-      showToast(`${files.length} images uploaded`);
+    if (files.length > 0) {
+        processAndStoreFiles(files); // Use new processing function
     }
   });
 
@@ -1714,34 +1724,19 @@ function initializeEventListeners() {
   });
 
   // Add clear all images button handler
-  document.getElementById("clear-all-images").addEventListener("click", () => {
-    // Get all image wrappers
-    const imageWrappers = elements.previewImages.querySelectorAll('.image-wrapper');
-    
-    // First fade out all images
-    imageWrappers.forEach((wrapper, index) => {
-      setTimeout(() => {
-        wrapper.style.opacity = '0';
-        wrapper.style.transform = 'scale(0.9)';
-      }, index * 50); // Staggered animation
-    });
-    
-    // Start container collapse animation
-    setTimeout(() => {
-      elements.previewImages.style.minHeight = '0';
-      elements.previewImages.classList.add('empty-container');
-      
-      // After animations complete, clear everything
-      setTimeout(() => {
-        elements.imageUpload.value = "";
-        elements.previewImages.innerHTML = "";
-        elements.previewImages.style.display = "none";
+  // Rename the ID in HTML if necessary, or use the existing 'clear-all-images'
+  const clearAllButton = document.getElementById("clear-all-images"); // Or elements.clearAllFilesButton
+  if (clearAllButton) {
+    clearAllButton.addEventListener("click", () => {
+        currentFiles = []; // Clear the main file store
+        elements.imageUpload.value = ""; // Clear the native file input
+        handleFilePreviews(); // Update previews (will hide them)
         updateUploadInfo();
-      }, 300);
-    }, imageWrappers.length * 50 + 100);
-  });
+        showToast("All files cleared");
+    });
+  }
 
-  // Add Backspace functionality to remove images
+  // Add Backspace functionality to remove files
   let backspaceTimer = null;
   let clearAllVisualFeedback = null;
   let backspaceKeyIsDown = false;
@@ -1846,72 +1841,12 @@ function initializeEventListeners() {
           }, 300);
         }
         
-        // Remove only the last image if there are any
-        const imageWrappers = elements.previewImages.querySelectorAll('.image-wrapper');
-        if (imageWrappers.length > 0) {
-          const lastImageWrapper = imageWrappers[imageWrappers.length - 1];
-          
-          // --- START EDIT: Update file list immediately ---
-          const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1);
-          const dataTransfer = new DataTransfer();
-          updatedFiles.forEach((f) => dataTransfer.items.add(f));
-          elements.imageUpload.files = dataTransfer.files;
-          updateUploadInfo(); // Update info display immediately
-          showToast("last image removed");
-          // --- END EDIT ---
-
-          // Animate removal
-          lastImageWrapper.style.opacity = '0';
-          lastImageWrapper.style.transform = 'scale(0.9)';
-          
-          // Get the height of the element about to be removed
-          const removedHeight = lastImageWrapper.offsetHeight;
-          const removedWidth = lastImageWrapper.offsetWidth;
-          
-          // Add a placeholder to maintain the layout temporarily
-          const placeholder = document.createElement('div');
-          placeholder.style.width = `${removedWidth}px`;
-          placeholder.style.height = `${removedHeight}px`;
-          placeholder.style.opacity = '0';
-          placeholder.style.transition = 'all 0.3s ease';
-          placeholder.style.transform = 'scale(0.9)';
-          
-          // Replace the image with the placeholder
-          lastImageWrapper.parentNode.replaceChild(placeholder, lastImageWrapper);
-          
-          // Start collapsing the placeholder
-          setTimeout(() => {
-            placeholder.style.width = '0';
-            placeholder.style.height = '0';
-            placeholder.style.margin = '0';
-            placeholder.style.padding = '0';
-            
-            // Wait for the collapse animation to finish
-            setTimeout(() => {
-              placeholder.remove();
-              
-              // --- START EDIT: Remove redundant file list update ---
-              // const updatedFiles = Array.from(elements.imageUpload.files).slice(0, -1); // Already updated
-              // const dataTransfer = new DataTransfer();
-              // updatedFiles.forEach((f) => dataTransfer.items.add(f));
-              // elements.imageUpload.files = dataTransfer.files;
-              
-              if (updatedFiles.length === 0) { // Check the already updated list
-              // --- END EDIT ---
-                // Start fade out animation for the container
-                elements.previewImages.style.minHeight = '0';
-                elements.previewImages.classList.add('empty-container');
-                
-                // After animation completes, hide the container
-                setTimeout(() => {
-                  elements.previewImages.style.display = "none";
-                }, 300);
-              }
-              
-              // updateUploadInfo(); // Already updated
-              // showToast("last image removed"); // Already shown
-            }, 300);
-          }, 300);
+        // Remove only the last file if there are any in currentFiles
+        if (currentFiles.length > 0) {
+          currentFiles.pop(); // Remove the last element from currentFiles
+          handleFilePreviews(); // Re-render previews
+          updateUploadInfo();   // Update count/size
+          showToast("Last file removed");
         }
       }
     }
@@ -1933,55 +1868,10 @@ initTheme();
 initializePromptPresets(); // Add this line
 initializeEventListeners();
 
-// UI/UX enhancements: drag-and-drop visual feedback and file upload spinner
+// UI/UX enhancements: drag-and-drop visual feedback (already in initializeEventListeners)
+// File upload spinner handling is now part of processAndStoreFiles and compressImagesIfNeeded
 
-elements.dragDropArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    elements.dragDropArea.classList.add('dragover');
-});
-
-elements.dragDropArea.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    elements.dragDropArea.classList.remove('dragover');
-});
-
-elements.dragDropArea.addEventListener('drop', function(e) {
-    e.preventDefault();
-    elements.dragDropArea.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      handleFiles(files);
-      e.dataTransfer.clearData();
-    }
-});
-
-elements.imageUpload.addEventListener('change', function(e) {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFiles(files);
-    }
-});
-
-function handleFiles(files) {
-    const spinner = document.getElementById('upload-spinner');
-    spinner.classList.remove('hidden');
-    
-    // Process each file
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (validateImage(file)) {
-            // Use existing preview function if available or add your preview logic here
-            if (typeof addImagePreview === 'function') {
-              addImagePreview(file);
-            }
-        }
-    }
-    
-    // Simulate processing delay then hide spinner
-    setTimeout(() => {
-        spinner.classList.add('hidden');
-    }, 1000);
-}
+// (Old handleFiles function can be removed as its logic is in processAndStoreFiles)
 
 // Response Switcher functionality
 function updateResponseContent() {
@@ -2033,14 +1923,14 @@ nextBtn.addEventListener('click', function() {
     }
 });
 
-// Function to update the upload information (image count and total size)
+// Function to update the upload information (file count and total size)
 function updateUploadInfo() {
-    const files = elements.imageUpload.files;
-    const count = files.length;
+    const count = currentFiles.length; // Use currentFiles
     let totalBytes = 0;
-    for (let i = 0; i < count; i++) {
-        totalBytes += files[i].size;
-    }
+    currentFiles.forEach(fileEntry => { // Iterate currentFiles
+        totalBytes += fileEntry.originalFile.size;
+    });
+
     let totalSizeText;
     if (totalBytes < 1048576) { // less than 1MB
         const totalKB = Math.round(totalBytes / 1024);
@@ -2049,8 +1939,8 @@ function updateUploadInfo() {
         const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
         totalSizeText = totalMB + " mb total";
     }
-    const imageText = count === 1 ? "image" : "images";
-    document.getElementById('image-count').textContent = count + " " + imageText;
+    const fileText = count === 1 ? "file" : "files"; // Changed from "image" to "file"
+    document.getElementById('image-count').textContent = count + " " + fileText;
     document.getElementById('total-size').textContent = totalSizeText;
 }
 
@@ -2169,4 +2059,15 @@ document.addEventListener('DOMContentLoaded', function() {
             historyModal.classList.remove('visible');
         }
     });
+});
+
+// Ensure DOMContentLoaded has the correct initial calls in the right order
+document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  initializePromptPresets(); // Ensure this is called
+  initializeEventListeners();
+  loadHistoryEntries(); // Load history for response switcher and modal
+  updateHistoryModal(); 
+  updateUploadInfo(); // Initial call
+  updateResponseSwitcher(); // Initial call for response switcher UI
 });
