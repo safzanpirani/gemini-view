@@ -1488,9 +1488,15 @@ async function handleSubmit(isFollowup = false) {
       `;
     }, 1000);
 
-    let payload;
-    const selectedModel = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL; // Get selected model
+    // Get selected model from active button
+    const activeModelButton = document.querySelector('.model-button.active');
+    const selectedModel = activeModelButton ? 
+                          activeModelButton.getAttribute('data-model-id') : 
+                          localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+    
+    console.log("Using model:", selectedModel);
 
+    let payload;
     if (isFollowup) {
       const previousResponse = elements.responseContent.textContent;
       const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
@@ -1658,14 +1664,34 @@ function initializeEventListeners() {
   elements.savePromptPreset.addEventListener("click", savePromptPreset);
   elements.deletePromptPreset.addEventListener("click", deletePromptPreset);
 
-  // Event listener for model selection
-  if (elements.modelButtonsContainer) {
-    elements.modelButtonsContainer.addEventListener("click", (e) => {
-      if (e.target.classList.contains("model-button")) {
-        const modelId = e.target.getAttribute("data-model-id");
-        selectModel(modelId);
+  // Event listener for model selection using delegated event handling
+  const modelButtonsContainer = document.querySelector(".model-buttons");
+  if (modelButtonsContainer) {
+    modelButtonsContainer.addEventListener("click", (e) => {
+      const modelButton = e.target.closest('.model-button');
+      if (modelButton) {
+        const modelId = modelButton.getAttribute("data-model-id");
+        if (modelId) {
+          selectModel(modelId);
+          
+          // Update UI for active state
+          document.querySelectorAll('.model-button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          modelButton.classList.add('active');
+        }
       }
     });
+    
+    // Set initial active state based on localStorage
+    const selectedModelId = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+    const activeButton = modelButtonsContainer.querySelector(`[data-model-id="${selectedModelId}"]`);
+    if (activeButton) {
+      document.querySelectorAll('.model-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      activeButton.classList.add('active');
+    }
   }
 
   elements.themeToggle.addEventListener("click", toggleTheme);
@@ -2244,9 +2270,26 @@ function updateModelButtons() {
 
 // Function to handle model selection
 function selectModel(modelId) {
+  if (!modelId) return;
+  
+  console.log(`Selecting model: ${modelId}`);
+  
+  // Save to localStorage
   localStorage.setItem("selected_gemini_model", modelId);
-  updateModelButtons(); // Update UI to reflect active button
-  showToast(`Switched to ${GEMINI_MODELS[modelId]}`);
+  
+  // Update UI
+  document.querySelectorAll('.model-button').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  const selectedButton = document.querySelector(`.model-button[data-model-id="${modelId}"]`);
+  if (selectedButton) {
+    selectedButton.classList.add('active');
+  }
+  
+  // Show feedback to user
+  const modelName = GEMINI_MODELS[modelId] || modelId;
+  showToast(`Switched to ${modelName}`);
 }
 
 // Initialize model selection buttons
