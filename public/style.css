@@ -99,7 +99,9 @@ h1 {
 
 .upload-section,
 .prompt-section,
-.preset-section {
+.preset-section,
+.temperature-section,
+.model-select-section {
     margin-bottom: 24px;
 }
 
@@ -1156,6 +1158,7 @@ input:focus, textarea:focus {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     background-color: var(--bg-color);
+    opacity: 0.7;
 }
 
 .entry-header {
@@ -1219,14 +1222,6 @@ input:focus, textarea:focus {
 
 /* Ensuring preset-button styles are sufficient and dark mode compatible */
 /* No new styles needed for .model-button if .preset-button is correctly themed */
-
-.upload-section {
-  padding: 15px;
-  border-radius: 8px;
-  background-color: var(--section-bg-color);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 20px; /* Add some space below the section */
-}
 
 .preset-controls-header {
   margin-bottom: 20px;
