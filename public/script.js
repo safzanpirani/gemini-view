@@ -1488,13 +1488,14 @@ async function handleSubmit(isFollowup = false) {
       `;
     }, 1000);
 
-    // Get selected model from active button
-    const activeModelButton = document.querySelector('.model-button.active');
-    const selectedModel = activeModelButton ? 
-                          activeModelButton.getAttribute('data-model-id') : 
-                          localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+    // Get selected model directly from localStorage, which is always updated
+    // by our selectGeminiModel function
+    const selectedModel = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+    console.log("Using model from localStorage:", selectedModel);
     
-    console.log("Using model:", selectedModel);
+    // For debugging - log active button state too
+    const activeModelButton = document.querySelector('.model-button.active');
+    console.log("Active button is for model:", activeModelButton ? activeModelButton.getAttribute('data-model-id') : 'none');
 
     let payload;
     if (isFollowup) {
@@ -1548,8 +1549,9 @@ async function handleSubmit(isFollowup = false) {
         },
       }));
 
+      // Use the selectedModel in the payload
       payload = {
-        modelName: selectedModel, // Add modelName to payload
+        modelName: selectedModel, // Make sure this is used in the API call
         contents: [
           {
             parts: [{ text: prompt }, ...inlineDataArray],
@@ -1667,31 +1669,45 @@ function initializeEventListeners() {
   // Event listener for model selection using delegated event handling
   const modelButtonsContainer = document.querySelector(".model-buttons");
   if (modelButtonsContainer) {
+    // Set up click event listener
     modelButtonsContainer.addEventListener("click", (e) => {
+      // Find the closest button element that was clicked
       const modelButton = e.target.closest('.model-button');
       if (modelButton) {
+        // Get the model ID from the button's data attribute
         const modelId = modelButton.getAttribute("data-model-id");
         if (modelId) {
-          selectModel(modelId);
+          console.log(`Model button clicked: ${modelId}`);
           
-          // Update UI for active state
+          // Update localStorage with the selected model
+          localStorage.setItem("selected_gemini_model", modelId);
+          
+          // Update UI to show active state
           document.querySelectorAll('.model-button').forEach(btn => {
             btn.classList.remove('active');
           });
           modelButton.classList.add('active');
+          
+          // Show feedback to user
+          const modelName = modelButton.textContent || GEMINI_MODELS[modelId] || modelId;
+          showToast(`Switched to ${modelName}`);
         }
       }
     });
     
-    // Set initial active state based on localStorage
-    const selectedModelId = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
-    const activeButton = modelButtonsContainer.querySelector(`[data-model-id="${selectedModelId}"]`);
-    if (activeButton) {
-      document.querySelectorAll('.model-button').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      activeButton.classList.add('active');
-    }
+    // Set initial active state based on localStorage when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      const selectedModelId = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+      console.log(`Initializing model selection to: ${selectedModelId}`);
+      const activeButton = modelButtonsContainer.querySelector(`[data-model-id="${selectedModelId}"]`);
+      if (activeButton) {
+        document.querySelectorAll('.model-button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        activeButton.classList.add('active');
+        console.log(`Set active model button: ${selectedModelId}`);
+      }
+    });
   }
 
   elements.themeToggle.addEventListener("click", toggleTheme);
@@ -2280,11 +2296,15 @@ function selectModel(modelId) {
   // Update UI
   document.querySelectorAll('.model-button').forEach(btn => {
     btn.classList.remove('active');
+    // Also update the data-selected attribute for debugging
+    btn.removeAttribute('data-selected');
   });
   
   const selectedButton = document.querySelector(`.model-button[data-model-id="${modelId}"]`);
   if (selectedButton) {
     selectedButton.classList.add('active');
+    selectedButton.setAttribute('data-selected', 'true');
+    console.log(`Updated active state for button: ${modelId}`);
   }
   
   // Show feedback to user
@@ -2297,3 +2317,27 @@ function initializeModelSelection() {
   console.log("[Debug] initializeModelSelection called"); // Log: Function called
   updateModelButtons();
 }
+
+// Global function to select Gemini model (needed for direct onclick handlers)
+function selectGeminiModel(modelId) {
+  console.log(`Direct selection of model: ${modelId}`);
+  
+  // 1. Update localStorage
+  localStorage.setItem("selected_gemini_model", modelId);
+  
+  // 2. Update UI
+  document.querySelectorAll('.model-button').forEach(btn => {
+    if (btn.getAttribute('data-model-id') === modelId) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // 3. Provide user feedback
+  const modelName = GEMINI_MODELS[modelId] || modelId;
+  showToast(`Switched to ${modelName}`);
+}
+
+// Expose the function globally (needed for HTML onclick handlers)
+window.selectGeminiModel = selectGeminiModel;

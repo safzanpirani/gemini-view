@@ -44,7 +44,9 @@ export async function onRequest(context) {
   // Determine the Gemini model to use
   const defaultModel = "gemini-2.5-flash-preview-04-17";
   const selectedModel = clientPayload.modelName || defaultModel;
+  console.log("Selected model:", selectedModel, "from payload model:", clientPayload.modelName);
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+  console.log("Using Gemini API URL:", geminiUrl);
 
   try {
     // Remove modelName from clientPayload before sending to Gemini API, if it exists,
