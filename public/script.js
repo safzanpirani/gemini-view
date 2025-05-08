@@ -1563,23 +1563,42 @@ async function handleSubmit(isFollowup = false) {
     const data = await makeApiCall(payload);
     console.log("API response:", data);
 
-    if (data.candidates && data.candidates.length > 0) {
-      const rawResponse = data.candidates[0].content.parts[0].text;
-      // Sanitize and format the response
-      const sanitizedResponse = DOMPurify.sanitize(rawResponse);
-      const formattedResponse = marked.parse(sanitizedResponse);
+    if (!(data.candidates && data.candidates.length > 0)) {
+      let errorMessage = "API Error: No candidates were returned by the model.";
 
-      elements.responseContent.innerHTML = formattedResponse;
-      elements.responseContent.closest('.response-section').classList.add('visible');
-      
-      // Store the response in conversation history
-      handleNewAssistantResponse(rawResponse);
-      
-      // Add history entry: record current prompt, preview images HTML, and raw response
-      addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
-    } else {
-      throw new Error("no candidates in api response");
+      if (data.promptFeedback) {
+        if (data.promptFeedback.blockReason) {
+          errorMessage = `API Request Blocked. Reason: ${data.promptFeedback.blockReason}.`;
+          if (data.promptFeedback.safetyRatings) {
+            const significantRatings = data.promptFeedback.safetyRatings.filter(
+              r => r.probability && !['NEGLIGIBLE', 'LOW'].includes(r.probability.toUpperCase())
+            );
+            if (significantRatings.length > 0) {
+              errorMessage += " Significant Safety Ratings: " + JSON.stringify(significantRatings);
+            }
+          }
+        } else {
+          // No block reason, but promptFeedback exists.
+          errorMessage = `No candidates in API response. Feedback: ${JSON.stringify(data.promptFeedback)}`;
+        }
+      }
+      throw new Error(errorMessage); // This will be caught by the main catch block which calls showError
     }
+
+    // If we reach here, data.candidates IS valid and has content.
+    const rawResponse = data.candidates[0].content.parts[0].text;
+    // Sanitize and format the response
+    const sanitizedResponse = DOMPurify.sanitize(rawResponse);
+    const formattedResponse = marked.parse(sanitizedResponse);
+
+    elements.responseContent.innerHTML = formattedResponse;
+    elements.responseContent.closest('.response-section').classList.add('visible');
+    
+    // Store the response in conversation history
+    handleNewAssistantResponse(rawResponse);
+    
+    // Add history entry: record current prompt, preview images HTML, and raw response
+    addHistoryEntry(prompt, document.getElementById('preview-images').innerHTML, rawResponse);
   } catch (error) {
     console.error("detailed error:", error);
     showError(error.message || 'an error occurred while processing your request', button);
