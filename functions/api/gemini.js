@@ -53,17 +53,34 @@ export async function onRequest(context) {
     // as it's not a standard Gemini API property in the main body.
     const { modelName, ...payloadForGemini } = clientPayload;
 
-    // Construct the payload for the Gemini API, adding thinkingBudget configuration
-    const geminiApiPayload = {
-      ...payloadForGemini, // Use the payload without our custom modelName
-      generationConfig: {
-        ...(payloadForGemini.generationConfig || {}), // Preserve existing generationConfig (e.g., temperature)
-        thinkingConfig: {
-          ...((payloadForGemini.generationConfig && payloadForGemini.generationConfig.thinkingConfig) || {}), // Preserve other thinkingConfig settings if any
-          thinkingBudget: 0, // Disable thinking
+    // Check if this is a Gemini 2.5 model (only these support thinkingConfig)
+    const isGemini25Model = selectedModel.includes("gemini-2.5-flash");
+    
+    // Construct the payload for the Gemini API, adding thinkingBudget configuration only for 2.5 models
+    let geminiApiPayload;
+    
+    if (isGemini25Model) {
+      // For Gemini 2.5 models, include thinkingConfig
+      geminiApiPayload = {
+        ...payloadForGemini,
+        generationConfig: {
+          ...(payloadForGemini.generationConfig || {}),
+          thinkingConfig: {
+            ...((payloadForGemini.generationConfig && payloadForGemini.generationConfig.thinkingConfig) || {}),
+            thinkingBudget: 0, // Disable thinking
+          },
         },
-      },
-    };
+      };
+    } else {
+      // For older models, don't include thinkingConfig
+      geminiApiPayload = {
+        ...payloadForGemini,
+        generationConfig: {
+          ...(payloadForGemini.generationConfig || {}),
+          // No thinkingConfig for older models
+        },
+      };
+    }
 
     console.log("Sending payload to Gemini:", JSON.stringify(geminiApiPayload, null, 2));
 
