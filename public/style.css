@@ -1221,8 +1221,21 @@ input:focus, textarea:focus {
   margin-bottom: 4px;
 }
 
-/* Note: We'll use the preset-button styles for .model-button */
-/* If needed, we can override specific model-button styling here */
+/* Override to force horizontal layout with equal widths */
+@media (min-width: 768px) {
+  .model-buttons {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Fix spacing and alignment */
+.model-button.preset-button {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
 
 .preset-controls-header {
   margin-bottom: 20px;

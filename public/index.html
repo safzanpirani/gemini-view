@@ -84,7 +84,9 @@
                 ></textarea>
             </div>
             <div class="model-select-section">
-                <h3>gemini model</h3>
+                <div class="preset-controls-header">
+                    <h3>gemini model</h3>
+                </div>
                 <div class="model-buttons">
                     <!-- Model buttons have direct onclick handlers -->
                     <button class="model-button preset-button active" data-model-id="gemini-2.5-flash-preview-04-17" onclick="selectGeminiModel('gemini-2.5-flash-preview-04-17')">gemini 2.5 flash (default)</button>
@@ -150,6 +152,34 @@
         </div>
         <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.5/purify.min.js"></script>
+        <!-- Add inline script to define selectGeminiModel before the main script loads -->
+        <script>
+            // Define the function globally so it's available immediately
+            function selectGeminiModel(modelId) {
+                console.log(`Direct selection of model: ${modelId}`);
+                
+                // 1. Update localStorage
+                localStorage.setItem("selected_gemini_model", modelId);
+                
+                // 2. Update UI
+                document.querySelectorAll('.model-button').forEach(btn => {
+                    if (btn.getAttribute('data-model-id') === modelId) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                // 3. Provide user feedback with toast (will be properly implemented in main script)
+                try {
+                    if (window.showToast) {
+                        window.showToast(`Switched to ${modelId.replace(/-preview.*$/, '')}`);
+                    }
+                } catch(e) {
+                    console.log("Toast not yet available");
+                }
+            }
+        </script>
         <script src="script.js"></script>
         <!-- History Modal -->
         <div id="history-modal" class="history-modal">

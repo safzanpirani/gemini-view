@@ -2319,25 +2319,14 @@ function initializeModelSelection() {
 }
 
 // Global function to select Gemini model (needed for direct onclick handlers)
+// Now just a wrapper around the inline version for compatibility
 function selectGeminiModel(modelId) {
-  console.log(`Direct selection of model: ${modelId}`);
-  
-  // 1. Update localStorage
-  localStorage.setItem("selected_gemini_model", modelId);
-  
-  // 2. Update UI
-  document.querySelectorAll('.model-button').forEach(btn => {
-    if (btn.getAttribute('data-model-id') === modelId) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-  
-  // 3. Provide user feedback
-  const modelName = GEMINI_MODELS[modelId] || modelId;
+  // The inline version in index.html already handles the basic functionality
+  // Here we just make sure the showToast function is properly called
+  const modelName = GEMINI_MODELS[modelId] || modelId.replace(/-preview.*$/, '');
   showToast(`Switched to ${modelName}`);
 }
 
 // Expose the function globally (needed for HTML onclick handlers)
 window.selectGeminiModel = selectGeminiModel;
+window.showToast = showToast; // Also expose showToast for the inline version
