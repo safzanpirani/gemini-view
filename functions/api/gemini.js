@@ -39,19 +39,25 @@ export async function onRequest(context) {
     });
   }
 
-  const geminiUrl =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent";
+  const clientPayload = await request.json();
+
+  // Determine the Gemini model to use
+  const defaultModel = "gemini-2.5-flash-preview-04-17";
+  const selectedModel = clientPayload.modelName || defaultModel;
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
 
   try {
-    const clientPayload = await request.json();
+    // Remove modelName from clientPayload before sending to Gemini API, if it exists,
+    // as it's not a standard Gemini API property in the main body.
+    const { modelName, ...payloadForGemini } = clientPayload;
 
     // Construct the payload for the Gemini API, adding thinkingBudget configuration
     const geminiApiPayload = {
-      ...clientPayload,
+      ...payloadForGemini, // Use the payload without our custom modelName
       generationConfig: {
-        ...(clientPayload.generationConfig || {}), // Preserve existing generationConfig (e.g., temperature)
+        ...(payloadForGemini.generationConfig || {}), // Preserve existing generationConfig (e.g., temperature)
         thinkingConfig: {
-          ...((clientPayload.generationConfig && clientPayload.generationConfig.thinkingConfig) || {}), // Preserve other thinkingConfig settings if any
+          ...((payloadForGemini.generationConfig && payloadForGemini.generationConfig.thinkingConfig) || {}), // Preserve other thinkingConfig settings if any
           thinkingBudget: 0, // Disable thinking
         },
       },

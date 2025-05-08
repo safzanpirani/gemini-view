@@ -1192,3 +1192,42 @@ input:focus, textarea:focus {
     margin: 4px;
     border-radius: 4px;
 }
+
+/* Styles for the new Model Selection Section */
+.model-select-section {
+  padding: 15px;
+  border-radius: 8px;
+  background-color: var(--section-bg-color);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+}
+
+.model-select-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--text-color);
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 5px;
+}
+
+.model-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px; /* Spacing between buttons */
+}
+
+/* Ensuring preset-button styles are sufficient and dark mode compatible */
+/* No new styles needed for .model-button if .preset-button is correctly themed */
+
+.upload-section {
+  padding: 15px;
+  border-radius: 8px;
+  background-color: var(--section-bg-color);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px; /* Add some space below the section */
+}
+
+.preset-controls-header {
+  margin-bottom: 20px;
+}

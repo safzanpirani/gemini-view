@@ -93,6 +93,7 @@ const elements = {
   presetButtons: document.querySelector(".preset-buttons"),
   factoryReset: document.getElementById("factory-reset"),
   fileInputButton: document.querySelector(".file-input-button"),
+  modelButtonsContainer: document.querySelector(".model-buttons"), // For model selection buttons
 };
 
 const DEFAULT_PROMPT_PRESETS = {
@@ -916,6 +917,15 @@ Adapt your explanation based on the tweet's nature - provide technical depth for
   }
 };
 
+// Define Gemini Models
+const GEMINI_MODELS = {
+  "gemini-2.5-flash-preview-04-17": "gemini 2.5 flash (default)",
+  "gemini-2.5-pro-preview-05-06": "gemini 2.5 pro",
+  "gemini-2.0-flash": "gemini 2.0 flash",
+  "gemini-2.0-flash-lite": "gemini 2.0 flash lite"
+};
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-04-17";
+
 // Add this function to initialize prompt presets
 function initializePromptPresets() {
   let presets = JSON.parse(localStorage.getItem("prompt_presets") || "{}");
@@ -1479,11 +1489,14 @@ async function handleSubmit(isFollowup = false) {
     }, 1000);
 
     let payload;
+    const selectedModel = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL; // Get selected model
+
     if (isFollowup) {
       const previousResponse = elements.responseContent.textContent;
       const followupPrompt = `Previous response:\n${previousResponse}\n\nFollow-up question:\n${prompt}`;
       
       payload = {
+        modelName: selectedModel, // Add modelName to payload
         contents: {
           role: "user",
           parts: [{ text: elements.systemPrompt.value + "\n\n" + followupPrompt }],
@@ -1530,6 +1543,7 @@ async function handleSubmit(isFollowup = false) {
       }));
 
       payload = {
+        modelName: selectedModel, // Add modelName to payload
         contents: [
           {
             parts: [{ text: prompt }, ...inlineDataArray],
@@ -1643,6 +1657,16 @@ function initializeEventListeners() {
 
   elements.savePromptPreset.addEventListener("click", savePromptPreset);
   elements.deletePromptPreset.addEventListener("click", deletePromptPreset);
+
+  // Event listener for model selection
+  if (elements.modelButtonsContainer) {
+    elements.modelButtonsContainer.addEventListener("click", (e) => {
+      if (e.target.classList.contains("model-button")) {
+        const modelId = e.target.getAttribute("data-model-id");
+        selectModel(modelId);
+      }
+    });
+  }
 
   elements.themeToggle.addEventListener("click", toggleTheme);
 
@@ -1951,6 +1975,7 @@ function isUserTyping() {
 initTheme();
 initializePromptPresets(); // Add this line
 initializeEventListeners();
+initializeModelSelection(); // Initialize model buttons
 
 // UI/UX enhancements: drag-and-drop visual feedback and file upload spinner
 
@@ -2189,3 +2214,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Function to update and render model selection buttons
+function updateModelButtons() {
+  if (!elements.modelButtonsContainer) return;
+  elements.modelButtonsContainer.innerHTML = "";
+
+  const selectedModelId = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+
+  Object.entries(GEMINI_MODELS).forEach(([modelId, friendlyName]) => {
+    const button = document.createElement("button");
+    button.className = "model-button preset-button"; // Reusing preset-button class for styling
+    button.textContent = friendlyName;
+    button.onclick = () => selectModel(modelId);
+
+    if (modelId === selectedModelId) {
+      button.classList.add("active");
+    }
+    elements.modelButtonsContainer.appendChild(button);
+  });
+}
+
+// Function to handle model selection
+function selectModel(modelId) {
+  localStorage.setItem("selected_gemini_model", modelId);
+  updateModelButtons(); // Update UI to reflect active button
+  showToast(`Switched to ${GEMINI_MODELS[modelId]}`);
+}
+
+// Initialize model selection buttons
+function initializeModelSelection() {
+  updateModelButtons();
+}
