@@ -2217,12 +2217,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function to update and render model selection buttons
 function updateModelButtons() {
-  if (!elements.modelButtonsContainer) return;
+  console.log("[Debug] updateModelButtons called"); // Log: Function called
+  if (!elements.modelButtonsContainer) {
+    console.error("[Debug] Model buttons container not found!"); // Log: Container not found
+    return;
+  }
+  console.log("[Debug] Model buttons container found:", elements.modelButtonsContainer); // Log: Container found
   elements.modelButtonsContainer.innerHTML = "";
 
   const selectedModelId = localStorage.getItem("selected_gemini_model") || DEFAULT_GEMINI_MODEL;
+  console.log("[Debug] Selected model ID:", selectedModelId); // Log: Selected model
 
   Object.entries(GEMINI_MODELS).forEach(([modelId, friendlyName]) => {
+    console.log(`[Debug] Creating button for model: ${friendlyName} (ID: ${modelId})`); // Log: Button creation attempt
     const button = document.createElement("button");
     button.className = "model-button preset-button"; // Reusing preset-button class for styling
     button.textContent = friendlyName;
@@ -2244,5 +2251,6 @@ function selectModel(modelId) {
 
 // Initialize model selection buttons
 function initializeModelSelection() {
+  console.log("[Debug] initializeModelSelection called"); // Log: Function called
   updateModelButtons();
 }
