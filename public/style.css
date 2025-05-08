@@ -1214,27 +1214,24 @@ input:focus, textarea:focus {
   padding-bottom: 8px;
 }
 
+/* Fix model buttons to display horizontally */
 .model-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 4px;
 }
 
-/* Override to force horizontal layout with equal widths */
-@media (min-width: 768px) {
-  .model-buttons {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* Fix spacing and alignment */
+/* Style individual model buttons */
 .model-button.preset-button {
+  flex: 1 0 calc(25% - 16px);
+  min-width: 150px;
   min-height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+  padding: 12px 16px;
 }
 
 .preset-controls-header {
