@@ -1307,7 +1307,7 @@ async function compressImage(file) {
 }
 
 async function compressImagesIfNeeded() {
-  const THRESHOLD = 5 * 1024 * 1024; // 5MB
+  const THRESHOLD = 500 * 1024; // 500KB
   let files = Array.from(elements.imageUpload.files);
   let totalSize = files.reduce((sum, f) => sum + f.size, 0);
   if (totalSize <= THRESHOLD) return;
