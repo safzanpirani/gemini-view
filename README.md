@@ -1,6 +1,6 @@
 # 🔮 Gemini Vision: Your Web-Based AI Vision Analysis Tool
 
-**Gemini Vision** is a user-friendly, web-based interface for interacting with Google's Gemini 2.0 Flash vision model. Upload images and get AI-powered analysis based on various specialized prompts.
+**Gemini Vision** is a user-friendly, web-based interface for interacting with Google's Gemini 2.5 Flash vision model. Upload images and get AI-powered analysis based on various specialized prompts.
 
 **Try it now:** [vision.safzan.tech](https://vision.safzan.tech) 🚀
 

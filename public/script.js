@@ -920,9 +920,9 @@ Adapt your explanation based on the tweet's nature - provide technical depth for
 // Define Gemini Models
 const GEMINI_MODELS = {
   "gemini-2.5-flash-preview-04-17": "gemini 2.5 flash (default)",
-  "gemini-2.5-pro-preview-05-06": "gemini 2.5 pro",
   "gemini-2.0-flash": "gemini 2.0 flash",
-  "gemini-2.0-flash-lite": "gemini 2.0 flash lite"
+  "gemini-2.0-flash-lite": "gemini 2.0 flash lite",
+  "gemini-1.5-pro": "gemini 1.5 pro"
 };
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-preview-04-17";
 
